@@ -1,6 +1,5 @@
 window.GESTLICIT_CONFIG = {
-  // Preencha com os dados do seu projeto Supabase (Project Settings > API).
-  supabaseUrl: '',
-  supabaseAnonKey: '',
+  supabaseUrl: 'https://slvtewocosnknenuexac.supabase.co',
+  supabaseAnonKey: 'sb_publishable_e9cyHhhulGS7ER5mhtf-0Q_zkyTpsru',
   appName: 'GestLicit',
 };
