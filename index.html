@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GestLicit — Controle Completo do Ciclo Licitatório</title>
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+
+<div id="login-screen" class="login-screen">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="brand-mark">GL</div>
+      <div class="brand-name">GestLicit</div>
+    </div>
+    <p class="login-slogan">Controle Completo do Ciclo Licitatório</p>
+
+    <div id="login-error" class="login-error hidden"></div>
+
+    <form id="login-form">
+      <div class="form-field" style="margin-bottom:14px;">
+        <label for="login-email">E-mail</label>
+        <input type="email" id="login-email" required autocomplete="username" />
+      </div>
+      <div class="form-field" style="margin-bottom:6px;">
+        <label for="login-password">Senha</label>
+        <input type="password" id="login-password" required autocomplete="current-password" />
+      </div>
+      <div class="form-field hidden" id="login-nome-field" style="margin-bottom:6px;">
+        <label for="login-nome">Nome</label>
+        <input type="text" id="login-nome" autocomplete="name" />
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:18px;" id="login-submit">Entrar</button>
+    </form>
+
+    <div class="login-toggle">
+      <span id="login-toggle-text">Ainda não tem conta?</span>
+      <button type="button" data-action="auth.toggleMode" id="login-toggle-btn">Criar conta</button>
+    </div>
+  </div>
+</div>
+
+<div id="app-shell" class="app-shell hidden">
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">GL</div>
+      <div class="brand-name">GestLicit</div>
+    </div>
+    <nav id="sidebar-nav" class="sidebar-nav"></nav>
+    <div class="sidebar-footer">
+      <button class="icon-btn" data-action="ui.toggleSidebar" title="Recolher menu" id="btn-collapse-sidebar"></button>
+    </div>
+  </aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <button class="icon-btn" id="btn-mobile-menu" data-action="ui.toggleMobileSidebar"></button>
+      <div class="page-title" id="page-title">Dashboard</div>
+
+      <div class="topbar-actions">
+        <button class="icon-btn" id="btn-notifications" data-action="ui.toggleNotifications" title="Alertas">
+          <span id="notif-dot" class="notif-dot hidden"></span>
+        </button>
+        <div id="notifications-dropdown" class="dropdown hidden"></div>
+
+        <div class="user-chip" id="user-chip" data-action="ui.toggleUserMenu">
+          <div class="user-avatar" id="user-avatar">U</div>
+          <div>
+            <div class="user-chip-name" id="user-chip-name">Usuário</div>
+            <div class="user-chip-role" id="user-chip-role">Consulta</div>
+          </div>
+        </div>
+        <div id="user-menu-dropdown" class="dropdown hidden"></div>
+      </div>
+    </header>
+
+    <main id="page-container" class="page-container"></main>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+<div id="toast" class="toast"></div>
+<div id="loading-overlay" class="loading-overlay hidden"><div class="spinner"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="./config.js"></script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
