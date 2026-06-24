@@ -1,21 +1,26 @@
 import * as Service from '../supabase-service.js';
-import { getState, canWrite, isAdmin } from '../state.js';
-import { byId, escapeHtml, formatDate, parseNumber, formatCurrency, toDatetimeLocalValue } from '../helpers.js';
+import { getState, canWrite, isAdmin, currentUser, refreshLookups } from '../state.js';
+import { byId, escapeHtml, formatDate, formatDateTime, formatNumber, parseNumber, formatCurrency, toDatetimeLocalValue, daysUntil, sumBy } from '../helpers.js';
 import { openModal, closeModal, confirmDialog, showToast, badge, renderEmptyState } from '../ui.js';
-import { MODALIDADES, MODOS_DISPUTA, STATUS_LICITACAO, STATUS_COLOR, UFS, ICONS } from '../constants.js';
+import { MODALIDADES, MODOS_DISPUTA, STATUS_LICITACAO, STATUS_COLOR, TIPOS_AGENDA, UFS, ICONS } from '../constants.js';
+
+const STATUS_PERDA = ['Declinou', 'Desclassificado', 'Fracassado', 'Revogado'];
 
 let cache = [];
 let itemsByLicitacao = new Map();
+let tagsByLicitacao = new Map();
+let agendaByLicitacao = new Map();
 let editingItems = [];
 let originalItemIds = new Set();
 let editingLicitacaoId = null;
+let resultadoItems = [];
 
 export async function render(container) {
   container.innerHTML = `
     <div class="page-header">
       <div>
         <h1>Licitações</h1>
-        <p>Editais disputados, itens, resultado e propostas.</p>
+        <p>Editais disputados, itens, precificação, agenda e resultado.</p>
       </div>
       ${canWrite() ? `<button class="btn btn-primary" data-action="licitacoes.novo">${ICONS.plus}Nova Licitação</button>` : ''}
     </div>
@@ -26,34 +31,70 @@ export async function render(container) {
         <option value="">Todos os status</option>
         ${STATUS_LICITACAO.map((s) => `<option value="${s}">${s}</option>`).join('')}
       </select>
+      <select id="lic-filtro-tag" style="border:1px solid var(--gray-200); border-radius:8px; padding:9px 11px;">
+        <option value="">Todas as tags</option>
+      </select>
     </div>
 
-    <div class="card table-wrap">
-      <div id="lic-table-container"></div>
-    </div>
+    <div id="lic-cards-container"></div>
   `;
 
-  byId('lic-filtro-busca').addEventListener('input', renderTable);
-  byId('lic-filtro-status').addEventListener('change', renderTable);
+  byId('lic-filtro-busca').addEventListener('input', renderCards);
+  byId('lic-filtro-status').addEventListener('change', renderCards);
+  byId('lic-filtro-tag').addEventListener('change', renderCards);
 
   await reload();
 }
 
 async function reload() {
-  const [licitacoes, allItems] = await Promise.all([Service.listLicitacoes(), Service.listAllLicitacaoItens()]);
+  const [licitacoes, allItems, licitacaoTags, agendaEventos] = await Promise.all([
+    Service.listLicitacoes(),
+    Service.listAllLicitacaoItens(),
+    Service.listLicitacaoTags(),
+    Service.AgendaEventos.list(),
+  ]);
   cache = licitacoes;
+
   itemsByLicitacao = new Map();
   for (const item of allItems) {
     const arr = itemsByLicitacao.get(item.licitacao_id) || [];
     arr.push(item);
     itemsByLicitacao.set(item.licitacao_id, arr);
   }
-  renderTable();
+
+  tagsByLicitacao = new Map();
+  for (const row of licitacaoTags) {
+    if (!row.tag) continue;
+    const arr = tagsByLicitacao.get(row.licitacao_id) || [];
+    arr.push(row.tag);
+    tagsByLicitacao.set(row.licitacao_id, arr);
+  }
+
+  agendaByLicitacao = new Map();
+  for (const ev of agendaEventos) {
+    if (ev.referencia_tipo !== 'licitacao' || !ev.referencia_id) continue;
+    const arr = agendaByLicitacao.get(ev.referencia_id) || [];
+    arr.push(ev);
+    agendaByLicitacao.set(ev.referencia_id, arr);
+  }
+  for (const arr of agendaByLicitacao.values()) arr.sort((a, b) => (a.data > b.data ? 1 : -1));
+
+  populateTagFilterOptions();
+  renderCards();
 }
 
-function renderTable() {
+function populateTagFilterOptions() {
+  const select = byId('lic-filtro-tag');
+  if (!select) return;
+  const current = select.value;
+  select.innerHTML = `<option value="">Todas as tags</option>${getState().lookups.tags.map((t) => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('')}`;
+  select.value = current;
+}
+
+function renderCards() {
   const busca = (byId('lic-filtro-busca')?.value || '').toLowerCase();
   const statusFiltro = byId('lic-filtro-status')?.value || '';
+  const tagFiltro = byId('lic-filtro-tag')?.value || '';
 
   const filtradas = cache.filter((l) => {
     if (busca) {
@@ -64,50 +105,113 @@ function renderTable() {
       const itens = itemsByLicitacao.get(l.id) || [];
       if (!itens.some((i) => i.status === statusFiltro)) return false;
     }
+    if (tagFiltro) {
+      const tags = tagsByLicitacao.get(l.id) || [];
+      if (!tags.some((t) => String(t.id) === String(tagFiltro))) return false;
+    }
     return true;
   });
 
-  const wrap = byId('lic-table-container');
+  const wrap = byId('lic-cards-container');
   if (!filtradas.length) {
-    wrap.innerHTML = renderEmptyState('Nenhuma licitação encontrada.');
+    wrap.innerHTML = `<div class="card">${renderEmptyState('Nenhuma licitação encontrada.')}</div>`;
     return;
   }
 
-  wrap.innerHTML = `
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Pregão / Processo</th><th>Órgão</th><th>Modalidade</th><th>Sessão</th><th>Itens / Resultado</th><th></th>
-        </tr>
-      </thead>
-      <tbody>
-        ${filtradas.map(rowHtml).join('')}
-      </tbody>
-    </table>
+  wrap.innerHTML = filtradas.map(cardHtml).join('');
+}
+
+function cardHtml(l) {
+  const itens = [...(itemsByLicitacao.get(l.id) || [])].sort((a, b) => (a.item_numero || 0) - (b.item_numero || 0));
+  const contagem = new Map();
+  itens.forEach((i) => contagem.set(i.status, (contagem.get(i.status) || 0) + 1));
+  const statusBadges = [...contagem.entries()]
+    .map(([status, qtd]) => badge(`${status}${qtd > 1 ? ` ×${qtd}` : ''}`, STATUS_COLOR[status] || 'muted'))
+    .join(' ');
+
+  const tags = tagsByLicitacao.get(l.id) || [];
+  const tagPills = tags
+    .map((t) => `<span class="tag-pill" style="background:${t.cor}1a; color:${t.cor}; border-color:${t.cor}55;">${escapeHtml(t.nome)}</span>`)
+    .join('');
+
+  const eventos = agendaByLicitacao.get(l.id) || [];
+  const agendaHtml = eventos.length
+    ? eventos
+        .slice(0, 4)
+        .map((ev) => {
+          const dias = daysUntil(ev.data);
+          const diasLabel = dias === null ? '' : dias < 0 ? 'vencido' : dias === 0 ? 'hoje' : `restam ${dias}d`;
+          return `<div class="lic-agenda-item"><strong>${escapeHtml(ev.titulo)}</strong><span>${formatDate(ev.data)} · ${diasLabel}</span></div>`;
+        })
+        .join('')
+    : `<span class="lic-agenda-empty">Nenhum lembrete vinculado.</span>`;
+
+  return `
+    <div class="card lic-card" data-id="${l.id}">
+      <div class="lic-card-head">
+        <div class="lic-card-tags">
+          ${tagPills}
+          ${canWrite() ? `<button type="button" class="link-btn" data-action="licitacoes.tags" data-id="${l.id}">+ Atribuir tag</button>` : ''}
+        </div>
+        <div class="row-actions">
+          <button class="icon-btn" data-action="licitacoes.editar" data-id="${l.id}" title="Gerenciar">${ICONS.edit}</button>
+          ${isAdmin() ? `<button class="icon-btn" data-action="licitacoes.excluir" data-id="${l.id}" title="Excluir">${ICONS.trash}</button>` : ''}
+        </div>
+      </div>
+
+      <h3 class="lic-card-title">${escapeHtml(l.modalidade)} ${escapeHtml(l.numero_pregao)} — ${escapeHtml(l.orgao?.nome || 'Sem órgão')}</h3>
+      <p class="lic-card-objeto">${escapeHtml(l.objeto || 'Sem objeto cadastrado.')}</p>
+
+      <div class="lic-card-facts">
+        <div><span>Modo de disputa</span><strong>${escapeHtml(l.modo_disputa || '-')}</strong></div>
+        <div><span>Valor total estimado</span><strong>${formatCurrency(l.valor_total_estimado)}</strong></div>
+        <div><span>Abertura</span><strong>${formatDateTime(l.data_abertura)}</strong></div>
+        <div><span>Registro de preço</span><strong>${l.registro_preco ? 'Sim' : 'Não'}</strong></div>
+        <div><span>Estado</span><strong>${escapeHtml(l.uf || '-')}</strong></div>
+      </div>
+
+      <div class="lic-card-status">${statusBadges || renderEmptyState('Sem itens cadastrados')}</div>
+
+      <div class="lic-card-agenda">
+        <div class="lic-card-agenda-head">
+          <strong>Tarefas e compromissos</strong>
+          ${canWrite() ? `<button type="button" class="link-btn" data-action="licitacoes.lembrete" data-id="${l.id}">+ Criar lembrete</button>` : ''}
+        </div>
+        <div class="lic-card-agenda-list">${agendaHtml}</div>
+      </div>
+
+      <div class="lic-card-footer">
+        <button class="btn btn-primary btn-sm" data-action="licitacoes.editar" data-id="${l.id}">Gerenciar</button>
+        <button class="btn btn-ghost btn-sm" data-action="licitacoes.resultado" data-id="${l.id}">Resultado</button>
+        <button type="button" class="link-btn" data-action="licitacoes.toggleItens" data-id="${l.id}">Ver itens do edital</button>
+      </div>
+
+      <div class="lic-card-itens" id="lic-itens-${l.id}" hidden>
+        ${itens.length ? `
+          <table class="data-table">
+            <thead><tr><th>Item</th><th>Descrição</th><th>Qtd</th><th>Valor Mínimo</th><th>Valor Inicial</th><th>Resultado</th></tr></thead>
+            <tbody>
+              ${itens.map((i) => `
+                <tr>
+                  <td>${i.item_numero}</td>
+                  <td>${escapeHtml(i.produto_descricao || '-')}</td>
+                  <td>${formatNumber(i.quantidade, 0)}</td>
+                  <td>${formatCurrency(i.valor_minimo)}</td>
+                  <td>${formatCurrency(i.valor_inicial)}</td>
+                  <td>${badge(i.status, STATUS_COLOR[i.status] || 'muted')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        ` : renderEmptyState('Nenhum item cadastrado.')}
+      </div>
+    </div>
   `;
 }
 
-function rowHtml(l) {
-  const itens = itemsByLicitacao.get(l.id) || [];
-  const contagem = new Map();
-  itens.forEach((i) => contagem.set(i.status, (contagem.get(i.status) || 0) + 1));
-  const badges = [...contagem.entries()]
-    .map(([status, qtd]) => badge(`${status} ${qtd > 1 ? `×${qtd}` : ''}`, STATUS_COLOR[status] || 'muted'))
-    .join(' ');
-
-  return `
-    <tr>
-      <td><strong>${escapeHtml(l.numero_pregao)}</strong><br/><span style="color:var(--gray-500); font-size:12px;">${escapeHtml(l.numero_processo || '-')}</span></td>
-      <td>${escapeHtml(l.orgao?.nome || '-')}${l.uf ? ` · ${l.uf}` : ''}</td>
-      <td>${escapeHtml(l.modalidade)}</td>
-      <td>${formatDate(l.data_sessao)}</td>
-      <td>${badges || renderEmptyState('Sem itens')}</td>
-      <td class="row-actions">
-        <button class="icon-btn" data-action="licitacoes.editar" data-id="${l.id}" title="Editar">${ICONS.edit}</button>
-        ${isAdmin() ? `<button class="icon-btn" data-action="licitacoes.excluir" data-id="${l.id}" title="Excluir">${ICONS.trash}</button>` : ''}
-      </td>
-    </tr>
-  `;
+function toggleItens(target) {
+  const el = byId(`lic-itens-${target.dataset.id}`);
+  if (el) el.hidden = !el.hidden;
 }
 
 async function abrirFormulario(licitacaoId) {
@@ -235,7 +339,7 @@ function renderItemsTable() {
                   <option value="">— Outro / não cadastrado —</option>
                   ${produtos.map((p) => `<option value="${p.id}" ${String(item.produto_id) === String(p.id) ? 'selected' : ''}>${escapeHtml(p.nome)}</option>`).join('')}
                 </select>
-                <input type="text" data-field="produto_descricao" value="${escapeHtml(item.produto_descricao ?? '')}" style="min-width:150px; margin-top:4px;" placeholder="Descrição/detalhe" />
+                <input type="text" data-field="produto_descricao" value="${escapeHtml(item.produto_descricao ?? '')}" style="min-width:150px; margin-top:4px; ${item.produto_id ? 'display:none;' : ''}" placeholder="Descrição/detalhe" />
               </td>
               <td><input type="text" data-field="quantidade" value="${item.quantidade ?? ''}" style="width:70px;" /></td>
               <td><input type="text" data-field="marca_fabricante" value="${escapeHtml(item.marca_fabricante ?? '')}" style="min-width:120px;" /></td>
@@ -275,21 +379,26 @@ function onItemFieldChange(event) {
   const item = editingItems[idx];
   item[field] = value;
 
-  if (field === 'produto_id' && value) {
-    const produto = getState().lookups.produtos.find((p) => String(p.id) === String(value));
-    if (produto) {
-      if (!item.produto_descricao) {
+  if (field === 'produto_id') {
+    const descInput = row.querySelector('[data-field="produto_descricao"]');
+    if (value) {
+      const produto = getState().lookups.produtos.find((p) => String(p.id) === String(value));
+      if (produto) {
         item.produto_descricao = produto.nome;
-        row.querySelector('[data-field="produto_descricao"]').value = produto.nome;
+        descInput.value = produto.nome;
+        if (!item.marca_fabricante && produto.fabricante) {
+          item.marca_fabricante = produto.fabricante;
+          row.querySelector('[data-field="marca_fabricante"]').value = produto.fabricante;
+        }
+        item.custo_unitario = produto.preco_custo ?? '';
+        row.querySelector('[data-field="custo_unitario"]').value = item.custo_unitario;
+        recalcValorMinimo(item);
+        row.querySelector('[data-field="valor_minimo"]').value = item.valor_minimo ?? '';
       }
-      if (!item.marca_fabricante && produto.fabricante) {
-        item.marca_fabricante = produto.fabricante;
-        row.querySelector('[data-field="marca_fabricante"]').value = produto.fabricante;
-      }
-      item.custo_unitario = produto.preco_custo ?? '';
-      row.querySelector('[data-field="custo_unitario"]').value = item.custo_unitario;
-      recalcValorMinimo(item);
-      row.querySelector('[data-field="valor_minimo"]').value = item.valor_minimo ?? '';
+      descInput.style.display = 'none';
+    } else {
+      descInput.style.display = '';
+      descInput.focus();
     }
   }
 
@@ -397,6 +506,249 @@ async function salvar() {
   }
 }
 
+function abrirTags(licitacaoId) {
+  const allTags = getState().lookups.tags;
+  const assignedIds = new Set((tagsByLicitacao.get(licitacaoId) || []).map((t) => String(t.id)));
+
+  const bodyHtml = `
+    <div class="tag-check-list" id="tag-check-list">
+      ${allTags.length ? allTags.map((t) => `
+        <label class="tag-check-row">
+          <input type="checkbox" value="${t.id}" ${assignedIds.has(String(t.id)) ? 'checked' : ''} />
+          <span class="tag-pill" style="background:${t.cor}1a; color:${t.cor}; border-color:${t.cor}55;">${escapeHtml(t.nome)}</span>
+        </label>
+      `).join('') : renderEmptyState('Nenhuma tag cadastrada ainda.')}
+    </div>
+    <div class="form-field" style="margin-top:16px;">
+      <label>Criar nova tag</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="nova-tag-nome" placeholder="Nome da tag" style="flex:1;" />
+        <input type="color" id="nova-tag-cor" value="#2563EB" style="width:46px; padding:2px; flex:0 0 auto;" />
+        <button type="button" class="btn btn-ghost btn-sm" data-action="licitacoes.criarTag" data-id="${licitacaoId}">Adicionar</button>
+      </div>
+    </div>
+  `;
+
+  openModal('Atribuir tags', bodyHtml, {
+    size: 'sm',
+    footerHtml: `
+      <button type="button" class="btn btn-ghost" data-action="modal.close">Cancelar</button>
+      <button type="button" class="btn btn-primary" data-action="licitacoes.salvarTags" data-id="${licitacaoId}">Salvar</button>
+    `,
+  });
+}
+
+async function criarTag(target) {
+  const licitacaoId = Number(target.dataset.id);
+  const nome = byId('nova-tag-nome').value.trim();
+  const cor = byId('nova-tag-cor').value;
+  if (!nome) {
+    showToast('Informe o nome da tag.', 'error');
+    return;
+  }
+  try {
+    await Service.Tags.create({ nome, cor });
+    await refreshLookups();
+    showToast('Tag criada.', 'success');
+    abrirTags(licitacaoId);
+  } catch (err) {
+    showToast(err.message || 'Erro ao criar tag.', 'error');
+  }
+}
+
+async function salvarTags(target) {
+  const licitacaoId = Number(target.dataset.id);
+  const checked = new Set([...byId('tag-check-list').querySelectorAll('input[type="checkbox"]:checked')].map((el) => Number(el.value)));
+  const assigned = new Set((tagsByLicitacao.get(licitacaoId) || []).map((t) => t.id));
+
+  try {
+    for (const tagId of checked) {
+      if (!assigned.has(tagId)) await Service.assignTag(licitacaoId, tagId);
+    }
+    for (const tagId of assigned) {
+      if (!checked.has(tagId)) await Service.unassignTag(licitacaoId, tagId);
+    }
+    showToast('Tags atualizadas.', 'success');
+    closeModal();
+    await reload();
+  } catch (err) {
+    showToast(err.message || 'Erro ao atualizar tags.', 'error');
+  }
+}
+
+function abrirLembrete(target) {
+  const licitacaoId = Number(target.dataset.id);
+  const licitacao = cache.find((l) => l.id === licitacaoId);
+  const bodyHtml = `
+    <div class="form-grid">
+      <div class="form-field span-2"><label>Título *</label><input id="lem-titulo" value="${escapeHtml(`Lembrete - ${licitacao?.numero_pregao || ''}`)}" /></div>
+      <div class="form-field"><label>Tipo</label><select id="lem-tipo">${TIPOS_AGENDA.map((t) => `<option ${t === 'Outro' ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      <div class="form-field"><label>Data *</label><input type="date" id="lem-data" /></div>
+      <div class="form-field"><label>Lembrete</label><div class="checkbox-field" style="height:38px;"><input type="checkbox" id="lem-ativo" checked /> Notificar</div></div>
+      <div class="form-field span-2"><label>Observações</label><textarea id="lem-obs"></textarea></div>
+    </div>
+  `;
+  openModal('Criar lembrete', bodyHtml, {
+    size: 'sm',
+    footerHtml: `
+      <button type="button" class="btn btn-ghost" data-action="modal.close">Cancelar</button>
+      <button type="button" class="btn btn-primary" data-action="licitacoes.salvarLembrete" data-id="${licitacaoId}">Salvar</button>
+    `,
+  });
+}
+
+async function salvarLembrete(target) {
+  const licitacaoId = Number(target.dataset.id);
+  const titulo = byId('lem-titulo').value.trim();
+  const data = byId('lem-data').value;
+  if (!titulo || !data) {
+    showToast('Informe título e data.', 'error');
+    return;
+  }
+  try {
+    await Service.AgendaEventos.create({
+      titulo,
+      tipo: byId('lem-tipo').value,
+      data,
+      lembrete: byId('lem-ativo').checked,
+      observacoes: byId('lem-obs').value.trim() || null,
+      referencia_tipo: 'licitacao',
+      referencia_id: licitacaoId,
+      criado_por: currentUser()?.id || null,
+    });
+    showToast('Lembrete criado.', 'success');
+    closeModal();
+    await reload();
+  } catch (err) {
+    showToast(err.message || 'Erro ao criar lembrete.', 'error');
+  }
+}
+
+async function abrirResultado(target) {
+  const licitacaoId = Number(target.dataset.id);
+  const itens = await Service.listLicitacaoItens(licitacaoId);
+  resultadoItems = itens.map((it) => ({ ...it }));
+  const { concorrentes } = getState().lookups;
+
+  const tabelaHtml = `
+    <div class="table-wrap items-table">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Item</th><th>Qtd</th><th>Meu Lance Final</th><th>Valor Arrematado</th>
+            <th>Resultado</th><th>Concorrente Vencedor</th><th>Motivo da perda</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${resultadoItems.map((item, idx) => {
+            const perdeu = STATUS_PERDA.includes(item.status);
+            return `
+            <tr data-row="${idx}">
+              <td><strong>${item.item_numero}</strong><br/><span style="font-size:11px; color:var(--gray-500);">${escapeHtml(item.produto_descricao || '-')}</span></td>
+              <td>${formatNumber(item.quantidade, 0)}</td>
+              <td><input type="text" data-field="valor_final" value="${item.valor_final ?? ''}" style="width:100px;" /></td>
+              <td><input type="text" data-field="valor_arrematado" value="${item.valor_arrematado ?? ''}" style="width:100px;" /></td>
+              <td>
+                <select data-field="status" style="min-width:130px;">
+                  ${STATUS_LICITACAO.map((s) => `<option value="${s}" ${item.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+                </select>
+              </td>
+              <td>
+                <select data-field="empresa_vencedora_id" style="min-width:140px;" ${perdeu ? '' : 'disabled'}>
+                  <option value="">-</option>
+                  ${concorrentes.map((c) => `<option value="${c.id}" ${String(item.empresa_vencedora_id) === String(c.id) ? 'selected' : ''}>${escapeHtml(c.nome)}</option>`).join('')}
+                </select>
+              </td>
+              <td><input type="text" data-field="motivo_perda" value="${escapeHtml(item.motivo_perda ?? '')}" style="min-width:140px;" ${perdeu ? '' : 'disabled'} /></td>
+            </tr>
+          `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="items-total" id="resultado-totais"></div>
+  `;
+
+  const bodyHtml = `
+    <p style="color:var(--gray-500); font-size:13px; margin:-4px 0 16px;">Registre o resultado final de cada item: quanto fechamos, por quanto o item foi arrematado e, em caso de perda, quem ganhou e por quanto.</p>
+    ${resultadoItems.length ? tabelaHtml : renderEmptyState('Esta licitação ainda não tem itens cadastrados.')}
+  `;
+
+  openModal('Pós-Disputa — Resultado', bodyHtml, {
+    size: 'xl',
+    footerHtml: `
+      <button type="button" class="btn btn-ghost" data-action="modal.close">Cancelar</button>
+      <button type="button" class="btn btn-primary" data-action="licitacoes.salvarResultado">Salvar</button>
+    `,
+  });
+
+  if (resultadoItems.length) {
+    wireResultadoInputs();
+    renderResultadoTotais();
+  }
+}
+
+function wireResultadoInputs() {
+  byId('modal-root').querySelectorAll('[data-field]').forEach((el) => {
+    el.addEventListener('input', onResultadoFieldChange);
+    el.addEventListener('change', onResultadoFieldChange);
+  });
+}
+
+function onResultadoFieldChange(event) {
+  const row = event.target.closest('tr');
+  const idx = Number(row.dataset.row);
+  const field = event.target.dataset.field;
+  const item = resultadoItems[idx];
+  item[field] = event.target.value;
+
+  if (field === 'status') {
+    const perdeu = STATUS_PERDA.includes(event.target.value);
+    const vencedorSelect = row.querySelector('[data-field="empresa_vencedora_id"]');
+    const motivoInput = row.querySelector('[data-field="motivo_perda"]');
+    vencedorSelect.disabled = !perdeu;
+    motivoInput.disabled = !perdeu;
+    if (!perdeu) {
+      item.empresa_vencedora_id = '';
+      item.motivo_perda = '';
+      vencedorSelect.value = '';
+      motivoInput.value = '';
+    }
+  }
+
+  renderResultadoTotais();
+}
+
+function renderResultadoTotais() {
+  const totalParticipado = sumBy(resultadoItems, (it) => parseNumber(it.valor_final) * parseNumber(it.quantidade));
+  const totalArrematado = sumBy(resultadoItems, (it) => parseNumber(it.valor_arrematado) * parseNumber(it.quantidade));
+  const wrap = byId('resultado-totais');
+  if (!wrap) return;
+  wrap.innerHTML = `
+    <span>Valor Total Participado: ${formatCurrency(totalParticipado)}</span>
+    <span>Valor Total Arrematado: ${formatCurrency(totalArrematado)}</span>
+  `;
+}
+
+async function salvarResultado() {
+  try {
+    for (const item of resultadoItems) {
+      await Service.updateLicitacaoItem(item.id, {
+        valor_final: parseNumber(item.valor_final),
+        valor_arrematado: item.valor_arrematado !== '' && item.valor_arrematado != null ? parseNumber(item.valor_arrematado) : null,
+        status: item.status,
+        empresa_vencedora_id: item.empresa_vencedora_id || null,
+        motivo_perda: item.motivo_perda || null,
+      });
+    }
+    showToast('Resultado atualizado.', 'success');
+    closeModal();
+    await reload();
+  } catch (err) {
+    showToast(err.message || 'Erro ao salvar resultado.', 'error');
+  }
+}
+
 async function excluir(target) {
   const id = Number(target.dataset.id);
   const ok = await confirmDialog('Tem certeza que deseja excluir esta licitação e todos os seus itens?');
@@ -417,4 +769,12 @@ export const actions = {
   'licitacoes.addItem': () => addItem(),
   'licitacoes.removerItem': (target) => removerItem(target),
   'licitacoes.salvar': () => salvar(),
+  'licitacoes.toggleItens': (target) => toggleItens(target),
+  'licitacoes.tags': (target) => abrirTags(Number(target.dataset.id)),
+  'licitacoes.criarTag': (target) => criarTag(target),
+  'licitacoes.salvarTags': (target) => salvarTags(target),
+  'licitacoes.lembrete': (target) => abrirLembrete(target),
+  'licitacoes.salvarLembrete': (target) => salvarLembrete(target),
+  'licitacoes.resultado': (target) => abrirResultado(target),
+  'licitacoes.salvarResultado': () => salvarResultado(),
 };

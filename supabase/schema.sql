@@ -301,6 +301,69 @@ alter table public.licitacao_itens add column if not exists custo_unitario numer
 alter table public.licitacao_itens add column if not exists margem_percentual numeric(6,2);
 
 -- ============================================================
+-- ALTERAÇÕES v1.2 — Bloco "Visão geral, Agenda vinculada, Pós-Disputa e Tags"
+-- Aditivo e idempotente: seguro rodar de novo sobre o banco já em produção.
+-- ============================================================
+
+-- licitacao_itens: valor pelo qual o item foi arrematado (nosso ou do concorrente vencedor)
+alter table public.licitacao_itens add column if not exists valor_arrematado numeric(14,2);
+
+-- TABELA: tags (rótulos livres atribuíveis a licitações)
+create table if not exists public.tags (
+  id          bigserial primary key,
+  nome        text not null unique,
+  cor         text not null default '#2563EB',
+  created_at  timestamptz not null default now()
+);
+
+-- TABELA: licitacao_tags (associação N:N entre licitacoes e tags)
+create table if not exists public.licitacao_tags (
+  licitacao_id  bigint not null references public.licitacoes(id) on delete cascade,
+  tag_id        bigint not null references public.tags(id) on delete cascade,
+  created_at    timestamptz not null default now(),
+  primary key (licitacao_id, tag_id)
+);
+
+alter table public.tags           enable row level security;
+alter table public.licitacao_tags enable row level security;
+
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['tags', 'licitacao_tags']
+  loop
+    execute format('drop policy if exists "%1$s_select" on public.%1$I;', t);
+    execute format('create policy "%1$s_select" on public.%1$I for select to authenticated using (true);', t);
+
+    execute format('drop policy if exists "%1$s_insert" on public.%1$I;', t);
+    execute format('create policy "%1$s_insert" on public.%1$I for insert to authenticated
+                     with check (public.get_user_role() <> ''consulta'');', t);
+
+    execute format('drop policy if exists "%1$s_update" on public.%1$I;', t);
+    execute format('create policy "%1$s_update" on public.%1$I for update to authenticated
+                     using (public.get_user_role() <> ''consulta'')
+                     with check (public.get_user_role() <> ''consulta'');', t);
+
+    execute format('drop policy if exists "%1$s_delete" on public.%1$I;', t);
+    execute format('create policy "%1$s_delete" on public.%1$I for delete to authenticated
+                     using (public.get_user_role() <> ''consulta'');', t);
+  end loop;
+end;
+$$;
+
+-- tags do sistema (referência visual do Licitei) — o usuário pode criar outras pela UI
+insert into public.tags (nome, cor) values
+  ('Precificado', '#2563EB'),
+  ('Cadastrado no portal', '#16A34A'),
+  ('Ganha', '#15803D'),
+  ('Recurso', '#D97706'),
+  ('Perdida', '#DC2626'),
+  ('Suspenso', '#CA8A04'),
+  ('Cancelada', '#64748B')
+on conflict (nome) do nothing;
+
+-- ============================================================
 -- TRIGGERS updated_at
 -- ============================================================
 do $$

@@ -56,6 +56,22 @@ export const Produtos = makeCrud('produtos', 'nome');
 export const Certidoes = makeCrud('certidoes', 'data_validade');
 export const AgendaEventos = makeCrud('agenda_eventos', 'data');
 export const Profiles = makeCrud('app_profiles', 'nome');
+export const Tags = makeCrud('tags', 'nome');
+
+// ============================================================
+// Tags de Licitação (associação N:N)
+// ============================================================
+export async function listLicitacaoTags() {
+  return handle(sb().from('licitacao_tags').select('licitacao_id, tag:tags(id,nome,cor)'));
+}
+
+export async function assignTag(licitacaoId, tagId) {
+  return handle(sb().from('licitacao_tags').insert({ licitacao_id: licitacaoId, tag_id: tagId }));
+}
+
+export async function unassignTag(licitacaoId, tagId) {
+  return handle(sb().from('licitacao_tags').delete().eq('licitacao_id', licitacaoId).eq('tag_id', tagId));
+}
 
 // ============================================================
 // Licitações
