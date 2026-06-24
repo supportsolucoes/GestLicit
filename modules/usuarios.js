@@ -2,21 +2,24 @@ import * as Service from '../supabase-service.js';
 import { refreshLookups, currentUser } from '../state.js';
 import { byId, escapeHtml } from '../helpers.js';
 import { openModal, closeModal, showToast, badge, renderEmptyState } from '../ui.js';
-import { ROLES, ICONS } from '../constants.js';
+import { ROLES, ICONS, PAGE_META } from '../constants.js';
 
 let cache = [];
+
+const PAGINAS_GRANTABLE = PAGE_META.filter((p) => p.id !== 'usuarios' && p.id !== 'dashboard');
 
 export async function render(container) {
   container.innerHTML = `
     <div class="page-header">
       <div>
         <h1>Usuários</h1>
-        <p>Perfis de acesso da equipe.</p>
+        <p>Perfis de acesso e páginas liberadas para cada usuário da equipe.</p>
       </div>
+      <button class="btn btn-primary" data-action="usuarios.novo">${ICONS.plus}Novo Usuário</button>
     </div>
 
     <div class="card" style="margin-bottom:16px; font-size:13px; color:var(--gray-500);">
-      Novos usuários se cadastram pela tela de login ("Criar conta") e recebem o perfil <strong>Consulta</strong> até serem promovidos aqui.
+      Administrador tem acesso a tudo. Usuário só vê e acessa as páginas marcadas no cadastro dele.
     </div>
 
     <div class="card table-wrap"><div id="usuarios-table"></div></div>
@@ -37,13 +40,14 @@ function renderTable() {
   }
   wrap.innerHTML = `
     <table class="data-table">
-      <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Páginas</th><th>Status</th><th></th></tr></thead>
       <tbody>
         ${cache.map((p) => `
           <tr>
             <td>${escapeHtml(p.nome)}${p.id === currentUser()?.id ? ' <span style="color:var(--gray-500); font-size:12px;">(você)</span>' : ''}</td>
             <td>${escapeHtml(p.email)}</td>
-            <td>${badge(ROLES.find((r) => r.id === p.role)?.label || p.role, 'info')}</td>
+            <td>${badge(ROLES.find((r) => r.id === p.role)?.label || p.role, p.role === 'administrador' ? 'info' : 'muted')}</td>
+            <td style="font-size:12.5px; color:var(--gray-500);">${p.role === 'administrador' ? 'Todas' : `${(p.paginas_permitidas || []).length} de ${PAGINAS_GRANTABLE.length}`}</td>
             <td>${p.ativo ? badge('Ativo', 'success') : badge('Inativo', 'muted')}</td>
             <td class="row-actions">
               <button class="icon-btn" data-action="usuarios.editar" data-id="${p.id}" title="Editar">${ICONS.edit}</button>
@@ -55,18 +59,100 @@ function renderTable() {
   `;
 }
 
-function abrirFormulario(id) {
+function paginasChecklistHtml(idPrefix, selecionadas) {
+  const set = new Set(selecionadas || []);
+  return `
+    <div class="tag-check-list">
+      ${PAGINAS_GRANTABLE.map((p) => `
+        <label class="tag-check-row">
+          <input type="checkbox" id="${idPrefix}-${p.id}" value="${p.id}" ${set.has(p.id) ? 'checked' : ''} />
+          <span>${escapeHtml(p.label)}</span>
+        </label>
+      `).join('')}
+    </div>
+  `;
+}
+
+function readChecklist(idPrefix) {
+  return PAGINAS_GRANTABLE
+    .map((p) => p.id)
+    .filter((id) => byId(`${idPrefix}-${id}`)?.checked);
+}
+
+// ============================================================
+// Novo usuário (via Edge Function — precisa de privilégio de admin)
+// ============================================================
+function abrirFormularioNovo() {
+  const bodyHtml = `
+    <div class="form-grid">
+      <div class="form-field span-2"><label>Nome *</label><input id="f-novo-nome" /></div>
+      <div class="form-field"><label>E-mail *</label><input type="email" id="f-novo-email" /></div>
+      <div class="form-field"><label>Senha provisória *</label><input type="text" id="f-novo-senha" placeholder="Mín. 6 caracteres" /></div>
+      <div class="form-field span-2">
+        <label>Perfil de acesso</label>
+        <select id="f-novo-role">${ROLES.map((r) => `<option value="${r.id}" ${r.id === 'usuario' ? 'selected' : ''}>${r.label}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="form-field" id="f-novo-paginas-wrap" style="margin-top:14px;">
+      <label>Páginas liberadas</label>
+      ${paginasChecklistHtml('f-novo-pag', [])}
+    </div>
+  `;
+  openModal('Novo usuário', bodyHtml, {
+    size: 'sm',
+    footerHtml: `
+      <button type="button" class="btn btn-ghost" data-action="modal.close">Cancelar</button>
+      <button type="button" class="btn btn-primary" data-action="usuarios.criar">Criar usuário</button>
+    `,
+  });
+  const syncPaginasVisibility = () => {
+    byId('f-novo-paginas-wrap').style.display = byId('f-novo-role').value === 'administrador' ? 'none' : '';
+  };
+  byId('f-novo-role').addEventListener('change', syncPaginasVisibility);
+  syncPaginasVisibility();
+}
+
+async function criarUsuario() {
+  const nome = byId('f-novo-nome').value.trim();
+  const email = byId('f-novo-email').value.trim();
+  const senha = byId('f-novo-senha').value;
+  const role = byId('f-novo-role').value;
+  if (!nome || !email || !senha) {
+    showToast('Informe nome, e-mail e senha.', 'error');
+    return;
+  }
+  try {
+    await Service.adminCreateUser({
+      nome, email, password: senha, role,
+      paginas_permitidas: role === 'usuario' ? readChecklist('f-novo-pag') : [],
+    });
+    showToast('Usuário criado com sucesso.', 'success');
+    closeModal();
+    await reload();
+  } catch (err) {
+    showToast(err.message || 'Erro ao criar usuário.', 'error');
+  }
+}
+
+// ============================================================
+// Editar usuário existente
+// ============================================================
+function abrirFormularioEditar(id) {
   const profile = cache.find((p) => p.id === id);
   if (!profile) return;
   const bodyHtml = `
     <div class="form-grid">
-      <div class="form-field span-2"><label>Nome</label><input id="f-usr-nome" value="${escapeHtml(profile.nome || '')}" /></div>
+      <div class="form-field span-2"><label>Nome</label><input id="f-edit-nome" value="${escapeHtml(profile.nome || '')}" /></div>
       <div class="form-field"><label>Perfil de acesso</label>
-        <select id="f-usr-role">${ROLES.map((r) => `<option value="${r.id}" ${r.id === profile.role ? 'selected' : ''}>${r.label}</option>`).join('')}</select>
+        <select id="f-edit-role">${ROLES.map((r) => `<option value="${r.id}" ${r.id === profile.role ? 'selected' : ''}>${r.label}</option>`).join('')}</select>
       </div>
       <div class="form-field"><label>Status</label>
-        <select id="f-usr-ativo"><option value="true" ${profile.ativo ? 'selected' : ''}>Ativo</option><option value="false" ${!profile.ativo ? 'selected' : ''}>Inativo</option></select>
+        <select id="f-edit-ativo"><option value="true" ${profile.ativo ? 'selected' : ''}>Ativo</option><option value="false" ${!profile.ativo ? 'selected' : ''}>Inativo</option></select>
       </div>
+    </div>
+    <div class="form-field" id="f-edit-paginas-wrap" style="margin-top:14px; ${profile.role === 'administrador' ? 'display:none;' : ''}">
+      <label>Páginas liberadas</label>
+      ${paginasChecklistHtml('f-edit-pag', profile.paginas_permitidas)}
     </div>
   `;
   openModal('Editar usuário', bodyHtml, {
@@ -76,15 +162,20 @@ function abrirFormulario(id) {
       <button type="button" class="btn btn-primary" data-action="usuarios.salvar" data-id="${id}">Salvar</button>
     `,
   });
+  byId('f-edit-role').addEventListener('change', (e) => {
+    byId('f-edit-paginas-wrap').style.display = e.target.value === 'administrador' ? 'none' : '';
+  });
 }
 
 async function salvar(target) {
   const id = target.dataset.id;
+  const role = byId('f-edit-role').value;
   try {
     await Service.Profiles.update(id, {
-      nome: byId('f-usr-nome').value.trim(),
-      role: byId('f-usr-role').value,
-      ativo: byId('f-usr-ativo').value === 'true',
+      nome: byId('f-edit-nome').value.trim(),
+      role,
+      ativo: byId('f-edit-ativo').value === 'true',
+      paginas_permitidas: role === 'usuario' ? readChecklist('f-edit-pag') : [],
     });
     showToast('Usuário atualizado.', 'success');
     closeModal();
@@ -96,6 +187,8 @@ async function salvar(target) {
 }
 
 export const actions = {
-  'usuarios.editar': (target) => abrirFormulario(target.dataset.id),
+  'usuarios.novo': () => abrirFormularioNovo(),
+  'usuarios.criar': () => criarUsuario(),
+  'usuarios.editar': (target) => abrirFormularioEditar(target.dataset.id),
   'usuarios.salvar': (target) => salvar(target),
 };

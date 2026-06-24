@@ -2,7 +2,7 @@ import * as SupabaseService from './supabase-service.js';
 import { isSupabaseConfigured } from './supabase-client.js';
 import {
   setSession, setPage, toggleSidebar, refreshLookups,
-  currentUser, currentRole,
+  currentUser, currentRole, canAccessPage,
 } from './state.js';
 import { byId, qsa, formatDate } from './helpers.js';
 import { ICONS, PAGE_META, ROLES } from './constants.js';
@@ -59,14 +59,14 @@ function roleLabel(role) {
 // ---------------------------------------------------------------
 // Navegação
 // ---------------------------------------------------------------
-async function renderPage(pageId) {
+async function renderPage(pageId, params) {
   const meta = PAGE_META.find((p) => p.id === pageId) || PAGE_META[0];
   byId('page-title').textContent = meta.label;
   qsa('.nav-item').forEach((el) => el.classList.toggle('active', el.dataset.page === pageId));
   const container = byId('page-container');
   setLoading(true);
   try {
-    await MODULES[pageId]?.render(container);
+    await MODULES[pageId]?.render(container, params);
   } catch (err) {
     console.error(err);
     container.innerHTML = `<div class="empty-state">Erro ao carregar a página: ${err.message || err}</div>`;
@@ -75,19 +75,23 @@ async function renderPage(pageId) {
   }
 }
 
-function navigateTo(pageId) {
-  if (!MODULES[pageId]) return;
+function navigateTo(pageId, params) {
+  const meta = PAGE_META.find((p) => p.id === pageId);
+  if (!MODULES[pageId] || !meta || !canAccessPage(meta)) {
+    if (pageId !== 'dashboard') navigateTo('dashboard');
+    return;
+  }
+  closeModal();
   setPage(pageId);
   history.replaceState(null, '', `#${pageId}`);
-  renderPage(pageId);
+  renderPage(pageId, params);
   byId('sidebar')?.classList.remove('mobile-open');
 }
 
 function renderSidebar() {
-  const role = currentRole();
   const nav = byId('sidebar-nav');
   nav.innerHTML = PAGE_META
-    .filter((p) => !p.adminOnly || role === 'administrador')
+    .filter((p) => canAccessPage(p))
     .map((p) => `
       <div class="nav-item" data-page="${p.id}" data-action="nav.go">
         ${ICONS[p.icon] || ''}
@@ -245,7 +249,13 @@ function bindGlobalEvents() {
     if (!target) return;
     const action = target.dataset.action;
 
-    if (action === 'nav.go') { navigateTo(target.dataset.page); return; }
+    if (action === 'nav.go') {
+      const params = {};
+      if (target.dataset.filterKey) params.filter = { key: target.dataset.filterKey, value: target.dataset.filterValue, label: target.dataset.filterLabel };
+      if (target.dataset.openId) params.openId = Number(target.dataset.openId);
+      navigateTo(target.dataset.page, params);
+      return;
+    }
     if (action === 'ui.toggleSidebar') {
       toggleSidebar();
       byId('sidebar').classList.toggle('collapsed');

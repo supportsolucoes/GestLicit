@@ -49,6 +49,7 @@ export async function render(container) {
     <div style="display:flex; gap:10px; flex-wrap:wrap;">
       <input type="text" id="analise-cnpj-input" placeholder="00.000.000/0000-00" style="flex:1; min-width:220px; max-width:320px; border:1px solid var(--gray-200); border-radius:8px; padding:9px 11px;" />
       <button class="btn btn-primary" id="analise-btn-buscar" data-action="concorrentes.analisarBusca">${ICONS.search} Analisar</button>
+      <button class="btn btn-ghost" data-action="concorrentes.limparAnalise">Limpar</button>
     </div>
     <div id="analise-resultado" style="margin-top:18px;"></div>
   `;
@@ -68,6 +69,13 @@ function analisarLinha(target) {
   const cnpj = External.onlyDigits(target.dataset.cnpj);
   byId('analise-cnpj-input').value = target.dataset.cnpj;
   analisarCnpj(cnpj);
+}
+
+function limparAnalise() {
+  ultimaAnalise = null;
+  byId('analise-cnpj-input').value = '';
+  byId('analise-resultado').innerHTML = '';
+  byId('analise-cnpj-input').focus();
 }
 
 function renderLoadingInline(mensagem) {
@@ -131,54 +139,71 @@ function renderResultado() {
     .slice(0, 6);
 
   wrap.innerHTML = `
-    <div class="form-section-title">Dados da empresa</div>
-    <div class="form-grid cols-3">
-      <div class="form-field"><label>CNPJ</label><div>${escapeHtml(empresa.cnpj || '-')}</div></div>
-      <div class="form-field"><label>Razão social</label><div>${escapeHtml(empresa.razao_social || '-')}</div></div>
-      <div class="form-field"><label>Nome fantasia</label><div>${escapeHtml(empresa.nome_fantasia || '-')}</div></div>
-      <div class="form-field"><label>Situação</label><div>${badge(empresa.descricao_situacao_cadastral || '-', empresa.descricao_situacao_cadastral === 'ATIVA' ? 'success' : 'danger')}</div></div>
-      <div class="form-field"><label>Porte</label><div>${escapeHtml(empresa.porte || '-')}</div></div>
-      <div class="form-field"><label>Natureza jurídica</label><div>${escapeHtml(empresa.natureza_juridica || '-')}</div></div>
-      <div class="form-field"><label>Capital social</label><div>${formatCurrency(empresa.capital_social)}</div></div>
-      <div class="form-field"><label>Início de atividade</label><div>${formatDate(empresa.data_inicio_atividade)}</div></div>
-      <div class="form-field"><label>Simples Nacional</label><div>${empresa.opcao_pelo_simples ? badge('Optante', 'success') : badge('Não optante', 'muted')}</div></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding-bottom:14px; border-bottom:1px solid var(--gray-200); margin-bottom:4px;">
+      <div><strong style="font-size:15px;">${escapeHtml(empresa.razao_social || empresa.cnpj || '-')}</strong></div>
+      <button type="button" class="btn btn-ghost btn-sm" data-action="concorrentes.novaConsulta">${ICONS.plus} Nova consulta</button>
     </div>
 
-    <div class="form-section-title">Endereço e contato</div>
-    <div class="form-grid cols-3">
-      <div class="form-field span-2"><label>Logradouro</label><div>${escapeHtml(empresa.logradouro || '-')}, ${escapeHtml(empresa.numero || '-')} ${escapeHtml(empresa.complemento || '')}</div></div>
-      <div class="form-field"><label>Bairro</label><div>${escapeHtml(empresa.bairro || '-')}</div></div>
-      <div class="form-field"><label>Cidade/UF</label><div>${escapeHtml(empresa.municipio || '-')}/${escapeHtml(empresa.uf || '-')}</div></div>
-      <div class="form-field"><label>Telefone</label><div>${escapeHtml(empresa.ddd_telefone_1 || '-')}</div></div>
-      <div class="form-field"><label>Email</label><div>${escapeHtml(empresa.email || '-')}</div></div>
-    </div>
-
-    <div class="form-section-title">Atividade econômica</div>
-    <p style="margin:0 0 8px;"><strong>${escapeHtml(empresa.cnae_fiscal_descricao || '-')}</strong></p>
-    ${empresa.cnaes_secundarios?.length ? `<p style="color:var(--gray-500); font-size:12.5px;">+ ${empresa.cnaes_secundarios.length} atividade(s) secundária(s)</p>` : ''}
-
-    <div class="form-section-title">Quadro de sócios e administradores</div>
-    ${empresa.qsa?.length ? empresa.qsa.map((s) => `
-      <div class="card" style="background:var(--blue-light); box-shadow:none; border:none; margin-bottom:8px; padding:12px 16px;">
-        <strong>${escapeHtml(s.nome_socio || '-')}</strong> — ${escapeHtml(s.qualificacao_socio || '-')}
+    <div class="info-section">
+      <div class="info-section-title">Dados da empresa</div>
+      <div class="info-grid">
+        <div class="info-field"><label>CNPJ</label><div>${escapeHtml(empresa.cnpj || '-')}</div></div>
+        <div class="info-field"><label>Razão social</label><div>${escapeHtml(empresa.razao_social || '-')}</div></div>
+        <div class="info-field"><label>Nome fantasia</label><div>${escapeHtml(empresa.nome_fantasia || '-')}</div></div>
+        <div class="info-field"><label>Situação</label><div>${badge(empresa.descricao_situacao_cadastral || '-', empresa.descricao_situacao_cadastral === 'ATIVA' ? 'success' : 'danger')}</div></div>
+        <div class="info-field"><label>Porte</label><div>${escapeHtml(empresa.porte || '-')}</div></div>
+        <div class="info-field"><label>Natureza jurídica</label><div>${escapeHtml(empresa.natureza_juridica || '-')}</div></div>
+        <div class="info-field"><label>Capital social</label><div>${formatCurrency(empresa.capital_social)}</div></div>
+        <div class="info-field"><label>Início de atividade</label><div>${formatDate(empresa.data_inicio_atividade)}</div></div>
+        <div class="info-field"><label>Simples Nacional</label><div>${empresa.opcao_pelo_simples ? badge('Optante', 'success') : badge('Não optante', 'muted')}</div></div>
       </div>
-    `).join('') : renderEmptyState('Nenhum sócio informado.')}
-
-    <div class="form-section-title">Certidões (CEIS/CNEP — Portal da Transparência)</div>
-    ${renderCertidoes(certidoes)}
-
-    <div class="form-section-title">Estatísticas (Portal Nacional de Contratações Públicas)</div>
-    <div class="stat-grid">
-      <div class="stat-card"><div class="stat-label">Contratos encontrados</div><div class="stat-value">${totalContratos}</div></div>
-      <div class="stat-card"><div class="stat-label">Valor total (carregado)</div><div class="stat-value">${formatCurrency(valorTotal)}</div></div>
-      <div class="stat-card"><div class="stat-label">Carregados nesta consulta</div><div class="stat-value">${contratos.length}</div></div>
     </div>
-    ${contratos.length ? `
-      <div class="form-grid cols-2" style="margin-bottom:18px;">
-        <div><p style="font-size:12.5px; color:var(--gray-500); margin-bottom:6px;">Por modalidade (quantidade)</p><canvas id="chart-concorrente-modalidade" style="width:100%; height:200px;"></canvas></div>
-        <div><p style="font-size:12.5px; color:var(--gray-500); margin-bottom:6px;">Por UF (valor)</p><canvas id="chart-concorrente-uf" style="width:100%; height:200px;"></canvas></div>
+
+    <div class="info-section">
+      <div class="info-section-title">Endereço e contato</div>
+      <div class="info-grid">
+        <div class="info-field span-2"><label>Logradouro</label><div>${escapeHtml(empresa.logradouro || '-')}, ${escapeHtml(empresa.numero || '-')} ${escapeHtml(empresa.complemento || '')}</div></div>
+        <div class="info-field"><label>Bairro</label><div>${escapeHtml(empresa.bairro || '-')}</div></div>
+        <div class="info-field"><label>Cidade/UF</label><div>${escapeHtml(empresa.municipio || '-')}/${escapeHtml(empresa.uf || '-')}</div></div>
+        <div class="info-field"><label>Telefone</label><div>${escapeHtml(empresa.ddd_telefone_1 || '-')}</div></div>
+        <div class="info-field"><label>Email</label><div>${escapeHtml(empresa.email || '-')}</div></div>
       </div>
-    ` : ''}
+    </div>
+
+    <div class="info-section">
+      <div class="info-section-title">Atividade econômica</div>
+      <p style="margin:0 0 8px;"><strong>${escapeHtml(empresa.cnae_fiscal_descricao || '-')}</strong></p>
+      ${empresa.cnaes_secundarios?.length ? `<p style="color:var(--gray-500); font-size:12.5px; margin:0;">+ ${empresa.cnaes_secundarios.length} atividade(s) secundária(s)</p>` : ''}
+    </div>
+
+    <div class="info-section">
+      <div class="info-section-title">Quadro de sócios e administradores</div>
+      ${empresa.qsa?.length ? empresa.qsa.map((s) => `
+        <div class="card" style="background:var(--blue-light); box-shadow:none; border:none; margin-bottom:8px; padding:12px 16px;">
+          <strong>${escapeHtml(s.nome_socio || '-')}</strong> — ${escapeHtml(s.qualificacao_socio || '-')}
+        </div>
+      `).join('') : renderEmptyState('Nenhum sócio informado.')}
+    </div>
+
+    <div class="info-section">
+      <div class="info-section-title">Certidões (CEIS/CNEP — Portal da Transparência)</div>
+      ${renderCertidoes(certidoes)}
+    </div>
+
+    <div class="info-section">
+      <div class="info-section-title">Estatísticas (Portal Nacional de Contratações Públicas)</div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Contratos encontrados</div><div class="stat-value">${totalContratos}</div></div>
+        <div class="stat-card"><div class="stat-label">Valor total (carregado)</div><div class="stat-value">${formatCurrency(valorTotal)}</div></div>
+        <div class="stat-card"><div class="stat-label">Carregados nesta consulta</div><div class="stat-value">${contratos.length}</div></div>
+      </div>
+      ${contratos.length ? `
+        <div class="form-grid cols-2" style="margin-top:18px;">
+          <div><p style="font-size:12.5px; color:var(--gray-500); margin-bottom:6px;">Por modalidade (quantidade)</p><canvas id="chart-concorrente-modalidade" style="width:100%; height:200px;"></canvas></div>
+          <div><p style="font-size:12.5px; color:var(--gray-500); margin-bottom:6px;">Por UF (valor)</p><canvas id="chart-concorrente-uf" style="width:100%; height:200px;"></canvas></div>
+        </div>
+      ` : ''}
+    </div>
 
     <div class="card items-table-card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -274,4 +299,6 @@ export const actions = {
   'concorrentes.analisarBusca': () => analisarBusca(),
   'concorrentes.analisarLinha': (target) => analisarLinha(target),
   'concorrentes.exportarExcel': () => exportarExcel(),
+  'concorrentes.limparAnalise': () => limparAnalise(),
+  'concorrentes.novaConsulta': () => limparAnalise(),
 };

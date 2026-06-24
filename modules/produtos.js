@@ -20,7 +20,7 @@ const mod = buildCrudModule({
     { key: 'codigo_sinc', label: 'Código' },
     { key: 'nome', label: 'Nome do Produto', required: true, span: 2 },
     { key: 'fabricante', label: 'Fabricante' },
-    { key: 'preco_custo', label: 'Preço de custo', type: 'number' },
+    { key: 'preco_custo', label: 'Preço de custo', type: 'currency' },
     { key: 'sinonimos', label: 'Nomes similares (separados por vírgula)', type: 'tags', span: 2 },
   ],
   afterChange: refreshLookups,

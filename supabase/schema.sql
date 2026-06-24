@@ -637,6 +637,49 @@ create policy "empenho_entregas_delete" on public.empenho_entregas for delete to
 notify pgrst, 'reload schema';
 
 -- ============================================================
+-- ALTERAÇÕES v1.9 — Simplificação de perfis (Administrador/Usuário) +
+-- cadastro de usuário pelo próprio app + anexo do Empenho
+-- Aditivo e idempotente: seguro rodar de novo sobre o banco já em produção.
+-- Decisão do usuário: só 2 perfis (antes eram 4 — administrador, comercial,
+-- financeiro, consulta), com o Administrador liberando, por usuário, quais
+-- páginas o Usuário pode acessar. A aplicação dessa permissão é só em
+-- nível de UI (menu/navegação), não reescreve RLS por tabela.
+-- ============================================================
+
+alter table public.app_profiles add column if not exists paginas_permitidas text[] not null default '{}';
+
+update public.app_profiles set role = 'usuario' where role in ('comercial', 'financeiro', 'consulta');
+
+alter table public.app_profiles drop constraint if exists app_profiles_role_check;
+alter table public.app_profiles add constraint app_profiles_role_check check (role in ('administrador', 'usuario'));
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+  insert into public.app_profiles (id, email, nome, role)
+  values (new.id, new.email, coalesce(new.raw_user_meta_data->>'nome', new.email), 'usuario')
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+-- Cadastro de novo usuário deixou de depender do painel do Supabase: a página
+-- "Usuários" do app chama a Edge Function `admin-create-user` (cria o login via
+-- auth.admin.createUser usando a service_role key — nunca exposta no cliente —
+-- e já grava role/paginas_permitidas em app_profiles). Função publicada via
+-- `supabase functions deploy admin-create-user`; código em
+-- supabase/functions/admin-create-user/index.ts (ver histórico do projeto).
+
+-- Empenho ganhou upload de arquivo, mesmo padrão do Contrato (bucket
+-- "documentos", pasta "Empenho/").
+alter table public.empenhos add column if not exists arquivo_url text;
+
+notify pgrst, 'reload schema';
+
+-- ============================================================
 -- TRIGGERS updated_at
 -- ============================================================
 do $$

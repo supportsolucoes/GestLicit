@@ -1,6 +1,6 @@
 import * as Service from '../supabase-service.js';
 import { getState, canWrite, isAdmin } from '../state.js';
-import { byId, escapeHtml, formatDate, formatCurrency, parseNumber, alertLevel, sumBy, calcSaldoAtaItemPorEmpenho } from '../helpers.js';
+import { byId, escapeHtml, formatDate, formatCurrency, formatMoneyInputValue, parseNumber, alertLevel, sumBy, calcSaldoAtaItemPorEmpenho } from '../helpers.js';
 import { openModal, closeModal, confirmDialog, showToast, badge, renderEmptyState } from '../ui.js';
 import { SITUACOES_ATA, STATUS_COLOR, ICONS } from '../constants.js';
 
@@ -8,16 +8,32 @@ let pageContainer = null;
 let view = 'list';
 let cache = [];
 let licitacoesLite = [];
+let activeFilter = null;
 
 let currentAta = null;
 let currentItens = [];
 let empenhosByProduto = new Map();
 let expandedItemId = null;
 
-export async function render(container) {
+export async function render(container, params) {
   pageContainer = container;
+  if (params?.openId) {
+    view = 'detail';
+    await renderDetailView(params.openId);
+    return;
+  }
+  activeFilter = params?.filter || null;
   view = 'list';
   await renderListView();
+}
+
+function limparFiltro() {
+  render(pageContainer);
+}
+
+function filteredCache() {
+  if (!activeFilter) return cache;
+  return cache.filter((r) => String(r[activeFilter.key]) === String(activeFilter.value));
 }
 
 // ============================================================
@@ -34,6 +50,12 @@ async function renderListView() {
       </div>
       ${canWrite() ? `<button class="btn btn-primary" data-action="atas.novo">${ICONS.plus}Nova Ata</button>` : ''}
     </div>
+    ${activeFilter ? `
+      <div class="card filter-banner">
+        <span>Filtrando por: ${escapeHtml(activeFilter.label || '')}</span>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="atas.limparFiltro">Limpar filtro</button>
+      </div>
+    ` : ''}
     <div class="card table-wrap"><div id="ata-table-container"></div></div>
   `;
   renderTable();
@@ -41,15 +63,16 @@ async function renderListView() {
 
 function renderTable() {
   const wrap = byId('ata-table-container');
-  if (!cache.length) {
-    wrap.innerHTML = renderEmptyState('Nenhuma ata cadastrada.');
+  const lista = filteredCache();
+  if (!lista.length) {
+    wrap.innerHTML = renderEmptyState(activeFilter ? 'Nenhuma ata encontrada para este filtro.' : 'Nenhuma ata cadastrada.');
     return;
   }
   wrap.innerHTML = `
     <table class="data-table">
       <thead><tr><th>Nº da Ata</th><th>Órgão</th><th>Vigência</th><th>Situação</th><th>Valor Total</th><th></th></tr></thead>
       <tbody>
-        ${cache.map((a) => {
+        ${lista.map((a) => {
           const alert = a.situacao === 'Vigente' ? alertLevel(a.vigencia_fim) : null;
           return `
           <tr>
@@ -98,7 +121,7 @@ async function abrirFormularioHeader(ataId) {
         <div class="form-field"><label>Situação</label><select id="f-situacao">${SITUACOES_ATA.map((s) => `<option ${s === ata.situacao ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
         <div class="form-field"><label>Vigência início</label><input type="date" id="f-vigencia-inicio" value="${ata.vigencia_inicio || ''}" /></div>
         <div class="form-field"><label>Vigência fim</label><input type="date" id="f-vigencia-fim" value="${ata.vigencia_fim || ''}" /></div>
-        <div class="form-field"><label>Valor Total</label><input id="f-valor-total" value="${ata.valor_total ?? ''}" /></div>
+        <div class="form-field"><label>Valor Total</label><div class="input-currency-wrap"><input id="f-valor-total" value="${formatMoneyInputValue(ata.valor_total)}" placeholder="0,00" /></div></div>
         <div class="form-field span-2"><label>Observações</label><textarea id="f-observacoes">${escapeHtml(ata.observacoes || '')}</textarea></div>
       </div>
     </form>
@@ -183,9 +206,11 @@ async function renderDetailView(ataId) {
         <h1>${escapeHtml(currentAta.numero_ata)}</h1>
         <p>${escapeHtml(currentAta.orgao?.nome || 'Órgão não informado')} · Vigência ${formatDate(currentAta.vigencia_inicio)} a ${formatDate(currentAta.vigencia_fim)}</p>
       </div>
-      <div style="display:flex; gap:8px;">
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <button class="btn btn-ghost" data-action="atas.voltarLista">Voltar</button>
         ${canWrite() ? `<button class="btn btn-ghost" data-action="atas.editarHeader" data-id="${currentAta.id}">${ICONS.edit} Editar dados</button>` : ''}
+        ${currentAta.orgao_id ? `<button class="btn btn-ghost" data-action="nav.go" data-page="contratos" data-filter-key="orgao_id" data-filter-value="${currentAta.orgao_id}" data-filter-label="Órgão ${escapeHtml(currentAta.orgao?.nome || '')}">${ICONS.contratos} Ver Contratos do Órgão</button>` : ''}
+        <button class="btn btn-ghost" data-action="nav.go" data-page="empenhos" data-filter-key="ata_id" data-filter-value="${currentAta.id}" data-filter-label="Ata ${escapeHtml(currentAta.numero_ata || '')}">${ICONS.empenhos} Ver Empenhos desta Ata</button>
       </div>
     </div>
 
@@ -275,7 +300,7 @@ function renderEmpenhosPanel(empenhoItens) {
             `).join('')}
           </tbody>
         </table>` : renderEmptyState('Nenhum empenho vinculado a este item ainda.')}
-      <button type="button" class="btn btn-ghost btn-sm" data-action="nav.go" data-page="empenhos">Ir para Empenhos</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-action="nav.go" data-page="empenhos" data-filter-key="ata_id" data-filter-value="${currentAta.id}" data-filter-label="Ata ${escapeHtml(currentAta.numero_ata || '')}">Ir para Empenhos</button>
     </div>
   `;
 }
@@ -302,7 +327,7 @@ async function abrirFormularioItem(itemId) {
         </select>
       </div>
       <div class="form-field"><label>Quantidade total</label><input id="f-item-qtd" value="${item.quantidade_total ?? ''}" /></div>
-      <div class="form-field"><label>Valor unitário</label><input id="f-item-valor" value="${item.valor_unitario ?? ''}" /></div>
+      <div class="form-field"><label>Valor unitário</label><div class="input-currency-wrap"><input id="f-item-valor" value="${formatMoneyInputValue(item.valor_unitario)}" placeholder="0,00" /></div></div>
     </div>
   `;
 
@@ -366,4 +391,5 @@ export const actions = {
   'atas.salvarItem': (target) => salvarItem(target),
   'atas.excluirItem': (target) => excluirItem(target),
   'atas.toggleEmpenhos': (target) => toggleEmpenhos(target),
+  'atas.limparFiltro': () => limparFiltro(),
 };

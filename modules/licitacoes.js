@@ -1,6 +1,6 @@
 import * as Service from '../supabase-service.js';
 import { getState, canWrite, isAdmin, currentUser, refreshLookups } from '../state.js';
-import { byId, escapeHtml, formatDate, formatDateTime, formatNumber, parseNumber, formatCurrency, toDatetimeLocalValue, daysUntil, sumBy } from '../helpers.js';
+import { byId, escapeHtml, formatDate, formatDateTime, formatNumber, formatMoneyInputValue, parseNumber, formatCurrency, toDatetimeLocalValue, daysUntil, sumBy } from '../helpers.js';
 import { openModal, closeModal, confirmDialog, showToast, badge, renderEmptyState } from '../ui.js';
 import { MODALIDADES, MODOS_DISPUTA, STATUS_LICITACAO, STATUS_COLOR, TIPOS_AGENDA, UFS, ICONS } from '../constants.js';
 
@@ -247,7 +247,7 @@ async function abrirFormulario(licitacaoId) {
         <div class="form-field"><label>UF</label><select id="f-uf"><option value="">-</option>${UFS.map((uf) => `<option ${uf === licitacao.uf ? 'selected' : ''}>${uf}</option>`).join('')}</select></div>
         <div class="form-field"><label>Modalidade</label><select id="f-modalidade">${MODALIDADES.map((m) => `<option ${m === licitacao.modalidade ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
         <div class="form-field"><label>Modo de Disputa</label><select id="f-modo-disputa"><option value="">-</option>${MODOS_DISPUTA.map((m) => `<option ${m === licitacao.modo_disputa ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
-        <div class="form-field"><label>Valor Total Estimado</label><input id="f-valor-total-estimado" value="${licitacao.valor_total_estimado ?? ''}" placeholder="0,00" /></div>
+        <div class="form-field"><label>Valor Total Estimado</label><div class="input-currency-wrap"><input id="f-valor-total-estimado" value="${formatMoneyInputValue(licitacao.valor_total_estimado)}" placeholder="0,00" /></div></div>
         <div class="form-field">
           <label>Registro de Preço?</label>
           <div class="checkbox-field" style="height:38px;"><input type="checkbox" id="f-registro-preco" ${licitacao.registro_preco ? 'checked' : ''} /> Sim</div>
@@ -343,11 +343,11 @@ function renderItemsTable() {
               <td><input type="text" data-field="quantidade" value="${item.quantidade ?? ''}" style="width:70px;" /></td>
               <td><input type="text" data-field="marca_fabricante" value="${escapeHtml(item.marca_fabricante ?? '')}" style="min-width:120px;" /></td>
               <td><input type="text" data-field="modelo_versao" value="${escapeHtml(item.modelo_versao ?? '')}" style="min-width:110px;" /></td>
-              <td><input type="text" data-field="valor_referencia" value="${item.valor_referencia ?? ''}" style="width:90px;" placeholder="Sigiloso" /></td>
-              <td><input type="text" data-field="custo_unitario" value="${item.custo_unitario ?? ''}" style="width:90px;" /></td>
+              <td><input type="text" data-field="valor_referencia" value="${formatMoneyInputValue(item.valor_referencia)}" style="width:90px;" placeholder="Sigiloso" /></td>
+              <td><input type="text" data-field="custo_unitario" value="${formatMoneyInputValue(item.custo_unitario)}" style="width:90px;" placeholder="0,00" /></td>
               <td><input type="text" data-field="margem_percentual" value="${item.margem_percentual ?? ''}" style="width:70px;" /></td>
-              <td><input type="text" data-field="valor_minimo" value="${item.valor_minimo ?? ''}" style="width:90px;" /></td>
-              <td><input type="text" data-field="valor_inicial" value="${item.valor_inicial ?? ''}" style="width:90px;" /></td>
+              <td><input type="text" data-field="valor_minimo" value="${formatMoneyInputValue(item.valor_minimo)}" style="width:90px;" placeholder="0,00" /></td>
+              <td><input type="text" data-field="valor_inicial" value="${formatMoneyInputValue(item.valor_inicial)}" style="width:90px;" placeholder="0,00" /></td>
               <td><button type="button" class="icon-btn" data-action="licitacoes.removerItem" data-row="${idx}">${ICONS.trash}</button></td>
             </tr>
           `).join('')}
@@ -387,15 +387,15 @@ function onItemFieldChange(event) {
         row.querySelector('[data-field="marca_fabricante"]').value = produto.fabricante;
       }
       item.custo_unitario = produto.preco_custo ?? '';
-      row.querySelector('[data-field="custo_unitario"]').value = item.custo_unitario;
+      row.querySelector('[data-field="custo_unitario"]').value = formatMoneyInputValue(item.custo_unitario);
       recalcValorMinimo(item);
-      row.querySelector('[data-field="valor_minimo"]').value = item.valor_minimo ?? '';
+      row.querySelector('[data-field="valor_minimo"]').value = formatMoneyInputValue(item.valor_minimo);
     }
   }
 
   if (field === 'custo_unitario' || field === 'margem_percentual') {
     recalcValorMinimo(item);
-    row.querySelector('[data-field="valor_minimo"]').value = item.valor_minimo ?? '';
+    row.querySelector('[data-field="valor_minimo"]').value = formatMoneyInputValue(item.valor_minimo);
   }
 }
 
@@ -643,8 +643,8 @@ async function abrirResultado(target) {
             <tr data-row="${idx}">
               <td><strong>${item.item_numero}</strong><br/><span style="font-size:11px; color:var(--gray-500);">${escapeHtml(item.produto_descricao || '-')}</span></td>
               <td>${formatNumber(item.quantidade, 0)}</td>
-              <td><input type="text" data-field="valor_final" value="${item.valor_final ?? ''}" style="width:100px;" /></td>
-              <td><input type="text" data-field="valor_arrematado" value="${item.valor_arrematado ?? ''}" style="width:100px;" /></td>
+              <td><input type="text" data-field="valor_final" value="${formatMoneyInputValue(item.valor_final)}" style="width:100px;" placeholder="0,00" /></td>
+              <td><input type="text" data-field="valor_arrematado" value="${formatMoneyInputValue(item.valor_arrematado)}" style="width:100px;" placeholder="0,00" /></td>
               <td>
                 <select data-field="status" style="min-width:130px;">
                   ${STATUS_LICITACAO.map((s) => `<option value="${s}" ${item.status === s ? 'selected' : ''}>${s}</option>`).join('')}

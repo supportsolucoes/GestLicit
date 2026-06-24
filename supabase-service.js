@@ -32,6 +32,22 @@ export async function getProfile(userId) {
   return handle(sb().from('app_profiles').select('*').eq('id', userId).single());
 }
 
+export async function adminCreateUser(payload) {
+  const { data, error } = await sb().functions.invoke('admin-create-user', { body: payload });
+  if (error) {
+    let message = error.message;
+    try {
+      const body = await error.context?.json();
+      if (body?.error) message = body.error;
+    } catch (_err) {
+      // mantém a mensagem genérica do erro de rede/HTTP
+    }
+    throw new Error(message);
+  }
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
 // ============================================================
 // CRUD genérico
 // ============================================================
@@ -364,6 +380,14 @@ export async function uploadCertidaoArquivo(file, certidaoId) {
 export async function uploadContratoArquivo(file, contratoId) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
   const path = `Contrato/${Date.now()}_${safeName}`;
+  const { error } = await sb().storage.from(DOCUMENTOS_BUCKET).upload(path, file);
+  if (error) throw error;
+  return path;
+}
+
+export async function uploadEmpenhoArquivo(file, empenhoId) {
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `Empenho/${Date.now()}_${safeName}`;
   const { error } = await sb().storage.from(DOCUMENTOS_BUCKET).upload(path, file);
   if (error) throw error;
   return path;

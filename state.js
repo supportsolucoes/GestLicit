@@ -74,7 +74,7 @@ export function currentUser() {
 }
 
 export function currentRole() {
-  return state.profile?.role || 'consulta';
+  return state.profile?.role || 'usuario';
 }
 
 export function isAdmin() {
@@ -82,7 +82,14 @@ export function isAdmin() {
 }
 
 export function canWrite() {
-  return currentRole() !== 'consulta';
+  return true;
+}
+
+export function canAccessPage(page) {
+  if (page.id === 'dashboard') return true;
+  if (isAdmin()) return true;
+  if (page.adminOnly) return false;
+  return (state.profile?.paginas_permitidas || []).includes(page.id);
 }
 
 export function lookupName(list, id) {

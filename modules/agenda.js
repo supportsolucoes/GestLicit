@@ -43,13 +43,13 @@ const crudMod = buildCrudModule({
 });
 
 let pageContainer = null;
-let viewMode = 'lista';
+let viewMode = 'mes';
 let cursorDate = new Date();
 let todosEventos = [];
 
 export async function render(container) {
   pageContainer = container;
-  viewMode = 'lista';
+  viewMode = 'mes';
   cursorDate = new Date();
   renderShell();
 }

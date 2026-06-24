@@ -1,5 +1,5 @@
 import { canWrite, isAdmin, refreshLookups } from '../state.js';
-import { byId, escapeHtml, parseNumber } from '../helpers.js';
+import { byId, escapeHtml, parseNumber, formatMoneyInputValue } from '../helpers.js';
 import { openModal, closeModal, confirmDialog, showToast, renderEmptyState } from '../ui.js';
 import { ICONS } from '../constants.js';
 
@@ -29,6 +29,8 @@ function renderField(field, record) {
     inputHtml = `<input type="date" id="${id}" value="${escapeHtml(value)}" />`;
   } else if (field.type === 'number') {
     inputHtml = `<input type="text" id="${id}" value="${escapeHtml(value)}" />`;
+  } else if (field.type === 'currency') {
+    inputHtml = `<div class="input-currency-wrap"><input type="text" id="${id}" value="${formatMoneyInputValue(value)}" placeholder="0,00" /></div>`;
   } else if (field.type === 'file') {
     inputHtml = `<input type="file" id="${id}" />${record?.arquivo_url ? `<div style="font-size:12px;color:var(--gray-500);margin-top:4px;">Arquivo atual: ${escapeHtml(record.nome_arquivo || 'anexo')}</div>` : ''}`;
   } else {
@@ -44,7 +46,7 @@ function readFieldValue(field) {
   if (field.type === 'checkbox') return el.checked;
   if (field.type === 'file') return el.files?.[0] || null;
   if (field.type === 'tags') return el.value.split(',').map((s) => s.trim()).filter(Boolean);
-  if (field.type === 'number') return parseNumber(el.value);
+  if (field.type === 'number' || field.type === 'currency') return parseNumber(el.value);
   return el.value.trim();
 }
 

@@ -203,6 +203,8 @@ a { color: var(--blue); text-decoration: none; }
 
 .topbar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; position: relative; }
 
+#btn-notifications { position: relative; }
+
 .notif-dot {
   position: absolute; top: 6px; right: 6px;
   width: 8px; height: 8px; border-radius: 50%;
@@ -365,9 +367,41 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 
 .checkbox-field { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gray-700); }
 
+.input-currency-wrap { position: relative; }
+.input-currency-wrap::before {
+  content: 'R$'; position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  font-size: 13px; color: var(--gray-500); pointer-events: none;
+}
+.input-currency-wrap input { padding-left: 32px; }
+
 @media (max-width: 720px) {
   .form-grid, .form-grid.cols-3 { grid-template-columns: 1fr; }
   .form-field.span-2, .form-field.span-3 { grid-column: span 1; }
+}
+
+/* ---------- Exibição somente-leitura (ex.: Análise de Concorrente) ---------- */
+.info-section {
+  padding: 18px 0; border-bottom: 1px solid var(--gray-200);
+}
+.info-section:first-child { padding-top: 0; }
+.info-section:last-child { border-bottom: none; padding-bottom: 0; }
+
+.info-section-title {
+  font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--blue); margin: 0 0 14px;
+}
+
+.info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 20px; }
+.info-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.info-field.span-2 { grid-column: span 2; }
+.info-field label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--gray-500);
+}
+.info-field > div { font-size: 14px; font-weight: 600; color: var(--gray-900); word-break: break-word; }
+
+@media (max-width: 720px) {
+  .info-grid { grid-template-columns: 1fr; }
+  .info-field.span-2 { grid-column: span 1; }
 }
 
 /* ---------- Modal ---------- */
@@ -396,6 +430,14 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .modal-header h3 { margin: 0; font-size: 16px; font-weight: 700; color: var(--gray-900); }
 .modal-body { padding: 20px 22px; overflow-y: auto; }
 .modal-footer { padding: 16px 22px; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end; gap: 10px; }
+
+/* ---------- Navegação cruzada entre módulos (Contrato/Ata/Empenho) ---------- */
+.modal-nav-links { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+
+.filter-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 16px; padding: 10px 16px; font-size: 13px; color: var(--gray-700);
+}
 
 /* ---------- Items table inside forms (licitação/ata itens) ---------- */
 .items-table-card { margin-top: 16px; }

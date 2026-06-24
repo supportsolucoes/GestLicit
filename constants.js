@@ -84,9 +84,7 @@ export const TIPOS_AGENDA = ['Sessão Pública', 'Prazo de Recurso', 'Vencimento
 
 export const ROLES = [
   { id: 'administrador', label: 'Administrador' },
-  { id: 'comercial', label: 'Comercial' },
-  { id: 'financeiro', label: 'Financeiro' },
-  { id: 'consulta', label: 'Consulta' },
+  { id: 'usuario', label: 'Usuário' },
 ];
 
 export const ALERT_THRESHOLDS = [90, 60, 30, 15, 7];

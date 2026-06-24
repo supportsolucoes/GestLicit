@@ -1,6 +1,6 @@
 import * as Service from '../supabase-service.js';
 import { getState, canWrite, isAdmin } from '../state.js';
-import { byId, escapeHtml, formatDate, formatCurrency, parseNumber, sumBy, todayISO, calcSaldoEmpenhoItem } from '../helpers.js';
+import { byId, escapeHtml, formatDate, formatCurrency, formatMoneyInputValue, parseNumber, sumBy, todayISO, calcSaldoEmpenhoItem } from '../helpers.js';
 import { openModal, closeModal, confirmDialog, showToast, badge, renderEmptyState } from '../ui.js';
 import { SITUACOES_EMPENHO, STATUS_COLOR, ICONS } from '../constants.js';
 
@@ -13,8 +13,13 @@ let editingEmpenhoId = null;
 let itensByEmpenho = new Map();
 let entregasByItemId = new Map();
 let expandedEntregaItemId = null;
+let pageContainer = null;
+let activeFilter = null;
+let editingArquivoFile = null;
 
-export async function render(container) {
+export async function render(container, params) {
+  pageContainer = container;
+  activeFilter = params?.filter || null;
   container.innerHTML = `
     <div class="page-header">
       <div>
@@ -23,9 +28,25 @@ export async function render(container) {
       </div>
       ${canWrite() ? `<button class="btn btn-primary" data-action="empenhos.novo">${ICONS.plus}Novo Empenho</button>` : ''}
     </div>
+    ${activeFilter ? `
+      <div class="card filter-banner">
+        <span>Filtrando por: ${escapeHtml(activeFilter.label || '')}</span>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="empenhos.limparFiltro">Limpar filtro</button>
+      </div>
+    ` : ''}
     <div class="card table-wrap"><div id="empenho-table-container"></div></div>
   `;
   await reload();
+  if (params?.openId) await abrirFormulario(params.openId);
+}
+
+function limparFiltro() {
+  render(pageContainer);
+}
+
+function filteredCache() {
+  if (!activeFilter) return cache;
+  return cache.filter((r) => String(r[activeFilter.key]) === String(activeFilter.value));
 }
 
 async function reload() {
@@ -67,15 +88,16 @@ function saldoEmpenho(empenhoId) {
 
 function renderTable() {
   const wrap = byId('empenho-table-container');
-  if (!cache.length) {
-    wrap.innerHTML = renderEmptyState('Nenhum empenho cadastrado.');
+  const lista = filteredCache();
+  if (!lista.length) {
+    wrap.innerHTML = renderEmptyState(activeFilter ? 'Nenhum empenho encontrado para este filtro.' : 'Nenhum empenho cadastrado.');
     return;
   }
   wrap.innerHTML = `
     <table class="data-table">
       <thead><tr><th>Nº Empenho</th><th>Origem</th><th>Órgão</th><th>Data</th><th>Situação</th><th>Valor Empenhado</th><th>% Entregue</th><th></th></tr></thead>
       <tbody>
-        ${cache.map((e) => {
+        ${lista.map((e) => {
           const saldo = saldoEmpenho(e.id);
           return `
           <tr>
@@ -105,6 +127,7 @@ async function abrirFormulario(empenhoId) {
   };
   editingItems = [];
   originalItemIds = new Set();
+  editingArquivoFile = null;
 
   if (!atasLite.length) atasLite = await Service.listAtas();
   if (!contratosLite.length) contratosLite = await Service.listContratos();
@@ -136,8 +159,17 @@ async function abrirFormulario(empenhoId) {
     .map((o) => `<option value="${o.id}" ${String(o.id) === String(empenho.orgao_id) ? 'selected' : ''}>${escapeHtml(o.nome)}</option>`)
     .join('');
 
+  const ataVinculada = empenho.ata_id ? atasLite.find((a) => String(a.id) === String(empenho.ata_id)) : null;
+  const contratoVinculado = empenho.contrato_id ? contratosLite.find((c) => String(c.id) === String(empenho.contrato_id)) : null;
+
   const bodyHtml = `
     <form id="empenho-form">
+      ${empenhoId && (ataVinculada || contratoVinculado) ? `
+        <div class="modal-nav-links">
+          ${ataVinculada ? `<button type="button" class="btn btn-ghost btn-sm" data-action="nav.go" data-page="atas" data-open-id="${ataVinculada.id}">${ICONS.atas} Ver Ata vinculada</button>` : ''}
+          ${contratoVinculado ? `<button type="button" class="btn btn-ghost btn-sm" data-action="nav.go" data-page="contratos" data-open-id="${contratoVinculado.id}">${ICONS.contratos} Ver Contrato vinculado</button>` : ''}
+        </div>
+      ` : ''}
       <div class="form-section-title">Dados do empenho</div>
       <div class="form-grid cols-3">
         <div class="form-field"><label>Nº do Empenho *</label><input required id="f-numero-empenho" value="${escapeHtml(empenho.numero_empenho || '')}" /></div>
@@ -146,7 +178,12 @@ async function abrirFormulario(empenhoId) {
         <div class="form-field"><label>Órgão</label><select id="f-orgao-id"><option value="">Selecione...</option>${orgaosOptions}</select></div>
         <div class="form-field"><label>Data do Empenho</label><input type="date" id="f-data-empenho" value="${empenho.data_empenho || ''}" /></div>
         <div class="form-field"><label>Situação</label><select id="f-situacao">${SITUACOES_EMPENHO.map((s) => `<option ${s === empenho.situacao ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-        <div class="form-field"><label>Valor Empenhado *</label><input required id="f-valor-empenhado" value="${empenho.valor_empenhado ?? ''}" placeholder="0,00" /></div>
+        <div class="form-field"><label>Valor Empenhado *</label><div class="input-currency-wrap"><input required id="f-valor-empenhado" value="${formatMoneyInputValue(empenho.valor_empenhado)}" placeholder="0,00" /></div></div>
+        <div class="form-field span-2">
+          <label>Arquivo do Empenho</label>
+          <input type="file" id="f-arquivo" />
+          ${empenho.arquivo_url ? `<button type="button" class="link-btn" style="margin-top:6px; text-align:left;" data-action="empenhos.verArquivo" data-url="${escapeHtml(empenho.arquivo_url)}">Ver arquivo atual</button>` : ''}
+        </div>
       </div>
 
       <div class="form-section-title">Observações</div>
@@ -185,6 +222,7 @@ async function abrirFormulario(empenhoId) {
 
   byId('f-ata-id').addEventListener('change', () => onVinculoChange('ata'));
   byId('f-contrato-id').addEventListener('change', () => onVinculoChange('contrato'));
+  byId('f-arquivo').addEventListener('change', (e) => { editingArquivoFile = e.target.files?.[0] || null; });
 
   renderItemsTable();
   if (empenhoId) renderEntregasSection();
@@ -231,7 +269,7 @@ function renderItemsTable() {
                   </select>
                 </td>
                 <td><input type="text" data-field="quantidade_empenhada" value="${item.quantidade_empenhada ?? ''}" style="width:90px;" /></td>
-                <td><input type="text" data-field="valor_unitario" value="${item.valor_unitario ?? ''}" style="width:90px;" /></td>
+                <td><input type="text" data-field="valor_unitario" value="${formatMoneyInputValue(item.valor_unitario)}" placeholder="0,00" style="width:90px;" /></td>
                 <td class="item-valor-total" style="font-size:12.5px; white-space:nowrap;">${formatCurrency(parseNumber(item.valor_unitario) * parseNumber(item.quantidade_empenhada))}</td>
                 <td><button type="button" class="icon-btn" data-action="empenhos.removerItem" data-row="${idx}">${ICONS.trash}</button></td>
               </tr>
@@ -450,6 +488,15 @@ async function excluirEntregaHandler(target) {
   }
 }
 
+async function verArquivo(target) {
+  try {
+    const url = await Service.getSignedUrl(target.dataset.url);
+    window.open(url, '_blank');
+  } catch (err) {
+    showToast(err.message || 'Erro ao gerar link do arquivo.', 'error');
+  }
+}
+
 async function salvar() {
   const payload = {
     numero_empenho: byId('f-numero-empenho').value.trim(),
@@ -482,6 +529,11 @@ async function salvar() {
     } else {
       const created = await Service.createEmpenho(payload);
       editingEmpenhoId = created.id;
+    }
+
+    if (editingArquivoFile) {
+      const path = await Service.uploadEmpenhoArquivo(editingArquivoFile, editingEmpenhoId);
+      await Service.updateEmpenho(editingEmpenhoId, { arquivo_url: path });
     }
 
     const currentIds = new Set();
@@ -538,4 +590,6 @@ export const actions = {
   'empenhos.addEntrega': (target) => addEntregaHandler(target),
   'empenhos.excluirEntrega': (target) => excluirEntregaHandler(target),
   'empenhos.salvar': () => salvar(),
+  'empenhos.limparFiltro': () => limparFiltro(),
+  'empenhos.verArquivo': (target) => verArquivo(target),
 };

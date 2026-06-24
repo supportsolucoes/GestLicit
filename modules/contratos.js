@@ -1,6 +1,6 @@
 import * as Service from '../supabase-service.js';
 import { getState, canWrite, isAdmin } from '../state.js';
-import { byId, escapeHtml, formatDate, formatCurrency, parseNumber, alertLevel, sumBy } from '../helpers.js';
+import { byId, escapeHtml, formatDate, formatCurrency, formatMoneyInputValue, parseNumber, alertLevel, sumBy } from '../helpers.js';
 import { openModal, closeModal, confirmDialog, showToast, badge, renderEmptyState } from '../ui.js';
 import { SITUACOES_ATA, VIABILIDADE_CONTRATO, STATUS_COLOR, ICONS } from '../constants.js';
 
@@ -11,8 +11,12 @@ let editingItems = [];
 let originalItemIds = new Set();
 let editingContratoId = null;
 let editingArquivoFile = null;
+let pageContainer = null;
+let activeFilter = null;
 
-export async function render(container) {
+export async function render(container, params) {
+  pageContainer = container;
+  activeFilter = params?.filter || null;
   container.innerHTML = `
     <div class="page-header">
       <div>
@@ -21,9 +25,25 @@ export async function render(container) {
       </div>
       ${canWrite() ? `<button class="btn btn-primary" data-action="contratos.novo">${ICONS.plus}Novo Contrato</button>` : ''}
     </div>
+    ${activeFilter ? `
+      <div class="card filter-banner">
+        <span>Filtrando por: ${escapeHtml(activeFilter.label || '')}</span>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="contratos.limparFiltro">Limpar filtro</button>
+      </div>
+    ` : ''}
     <div class="card table-wrap"><div id="contrato-table-container"></div></div>
   `;
   await reload();
+  if (params?.openId) await abrirFormulario(params.openId);
+}
+
+function limparFiltro() {
+  render(pageContainer);
+}
+
+function filteredCache() {
+  if (!activeFilter) return cache;
+  return cache.filter((r) => String(r[activeFilter.key]) === String(activeFilter.value));
 }
 
 async function reload() {
@@ -45,15 +65,16 @@ function valorTotalContrato(contratoId) {
 
 function renderTable() {
   const wrap = byId('contrato-table-container');
-  if (!cache.length) {
-    wrap.innerHTML = renderEmptyState('Nenhum contrato cadastrado.');
+  const lista = filteredCache();
+  if (!lista.length) {
+    wrap.innerHTML = renderEmptyState(activeFilter ? 'Nenhum contrato encontrado para este filtro.' : 'Nenhum contrato cadastrado.');
     return;
   }
   wrap.innerHTML = `
     <table class="data-table">
       <thead><tr><th>Nº Contrato</th><th>Licitação</th><th>Órgão</th><th>Vigência</th><th>Situação</th><th>Valor Total</th><th></th></tr></thead>
       <tbody>
-        ${cache.map((c) => {
+        ${lista.map((c) => {
           const alert = c.situacao === 'Vigente' ? alertLevel(c.vigencia_fim) : null;
           return `
           <tr>
@@ -104,8 +125,16 @@ async function abrirFormulario(contratoId) {
     .map((o) => `<option value="${o.id}" ${String(o.id) === String(contrato.orgao_id) ? 'selected' : ''}>${escapeHtml(o.nome)}</option>`)
     .join('');
 
+  const orgaoNome = getState().lookups.orgaos.find((o) => String(o.id) === String(contrato.orgao_id))?.nome || '';
+
   const bodyHtml = `
     <form id="contrato-form">
+      ${contratoId ? `
+        <div class="modal-nav-links">
+          ${contrato.orgao_id ? `<button type="button" class="btn btn-ghost btn-sm" data-action="nav.go" data-page="atas" data-filter-key="orgao_id" data-filter-value="${contrato.orgao_id}" data-filter-label="Órgão ${escapeHtml(orgaoNome)}">${ICONS.atas} Ver Atas do Órgão</button>` : ''}
+          <button type="button" class="btn btn-ghost btn-sm" data-action="nav.go" data-page="empenhos" data-filter-key="contrato_id" data-filter-value="${contratoId}" data-filter-label="Contrato ${escapeHtml(contrato.numero_contrato || '')}">${ICONS.empenhos} Ver Empenhos deste Contrato</button>
+        </div>
+      ` : ''}
       <div class="form-section-title">Dados do contrato</div>
       <div class="form-grid cols-3">
         <div class="form-field"><label>Nº do Contrato *</label><input required id="f-numero-contrato" value="${escapeHtml(contrato.numero_contrato || '')}" /></div>
@@ -114,7 +143,7 @@ async function abrirFormulario(contratoId) {
         <div class="form-field"><label>Data do Contrato</label><input type="date" id="f-data-contrato" value="${contrato.data_contrato || ''}" /></div>
         <div class="form-field"><label>Data de Assinatura</label><input type="date" id="f-data-assinatura" value="${contrato.data_assinatura || ''}" /></div>
         <div class="form-field"><label>Situação</label><select id="f-situacao">${SITUACOES_ATA.map((s) => `<option ${s === contrato.situacao ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-        <div class="form-field"><label>Valor do Contrato *</label><input required id="f-valor-contrato" value="${contrato.valor_contrato ?? ''}" placeholder="0,00" /></div>
+        <div class="form-field"><label>Valor do Contrato *</label><div class="input-currency-wrap"><input required id="f-valor-contrato" value="${formatMoneyInputValue(contrato.valor_contrato)}" placeholder="0,00" /></div></div>
       </div>
 
       <div class="form-section-title">Vigência e viabilidade</div>
@@ -222,7 +251,7 @@ function renderItemsTable() {
                 <td><input type="text" data-field="modelo_versao" value="${escapeHtml(item.modelo_versao ?? '')}" style="min-width:100px;" /></td>
                 <td><input type="text" data-field="unidade" value="${escapeHtml(item.unidade ?? '1 UN')}" style="width:70px;" /></td>
                 <td><input type="text" data-field="quantidade_total" value="${item.quantidade_total ?? ''}" style="width:80px;" /></td>
-                <td><input type="text" data-field="valor_unitario" value="${item.valor_unitario ?? ''}" style="width:90px;" /></td>
+                <td><input type="text" data-field="valor_unitario" value="${formatMoneyInputValue(item.valor_unitario)}" placeholder="0,00" style="width:90px;" /></td>
                 <td class="item-valor-total" style="font-size:12.5px; white-space:nowrap;">${formatCurrency(parseNumber(item.valor_unitario) * parseNumber(item.quantidade_total))}</td>
                 <td><button type="button" class="icon-btn" data-action="contratos.removerItem" data-row="${idx}">${ICONS.trash}</button></td>
               </tr>
@@ -444,4 +473,5 @@ export const actions = {
   'contratos.carregarItensLicitacao': () => carregarItensLicitacao(),
   'contratos.verArquivo': (target) => verArquivo(target),
   'contratos.salvar': () => salvar(),
+  'contratos.limparFiltro': () => limparFiltro(),
 };

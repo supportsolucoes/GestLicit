@@ -26,6 +26,13 @@ export function formatNumber(value, decimals = 2) {
   return n.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
+export function formatMoneyInputValue(value) {
+  if (value === null || value === undefined || value === '') return '';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '';
+  return formatNumber(n, 2);
+}
+
 export function formatDate(value) {
   if (!value) return '-';
   const d = value instanceof Date ? value : new Date(`${value}T00:00:00`);
