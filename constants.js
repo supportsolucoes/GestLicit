@@ -55,6 +55,8 @@ export const STATUS_COLOR = {
 
 export const MODALIDADES = ['Pregão Eletrônico', 'Pregão Presencial', 'Concorrência', 'Concurso', 'Leilão', 'Dispensa', 'Inexigibilidade'];
 
+export const MODOS_DISPUTA = ['Aberto', 'Fechado', 'Aberto-Fechado'];
+
 export const TIPOS_ATA = ['ATA', 'EMPENHO'];
 
 export const SITUACOES_ATA = ['Vigente', 'Encerrada', 'Cancelada'];

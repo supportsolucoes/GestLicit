@@ -36,7 +36,7 @@ Sem bundler nem transpilador — qualquer mudança em `.js`/`.html`/`.css` é re
 
 ### Banco de dados
 Schema 100% relacional (sem JSONB de estado, diferente do projeto Fluxo) — ver `supabase/schema.sql`. Tabelas centrais:
-- `licitacoes` + `licitacao_itens` — editais disputados e seus itens (status Ganhou/Declinou/Desclassificado/Fracassado/Revogado)
+- `licitacoes` + `licitacao_itens` — editais disputados e seus itens (status Ganhou/Declinou/Desclassificado/Fracassado/Revogado). `licitacoes` guarda o cabeçalho completo do edital (datas/prazos, pregoeiro, registro de preço, modo de disputa etc.). `licitacao_itens` guarda, por item: dados do edital (produto vinculado, qtd, marca/fabricante, modelo/versão, valor de referência — pode ficar vazio = sigiloso) e a precificação (`custo_unitario`, `margem_percentual`, `valor_minimo` calculado a partir desses dois, `valor_inicial` digitado livremente). Os campos de resultado (`status`, `empresa_vencedora_id`, `parceiro_id`, `motivo_perda`, `valor_final`) continuam na mesma tabela mas **não têm UI no modal de cadastro/precificação** — ficam para o próximo bloco (Sessão Pública/Resultado).
 - `atas` + `ata_itens` + `ata_consumos` — atas/empenhos ganhos, itens com saldo, e o histórico de compras (substitui as colunas fixas "1ª a 15ª compra" da planilha antiga por uma tabela de movimentos sem limite)
 - `orgaos`, `concorrentes`, `parceiros`, `produtos` — cadastros de apoio (lookups)
 - `certidoes`, `documentos`, `agenda_eventos` — regularidade fiscal, repositório de arquivos e prazos
@@ -82,8 +82,18 @@ Não há framework de UI. `app.js` mantém `MODULES = { dashboard, licitacoes, a
 3. Em **Settings → Pages**, branch `main`, pasta raiz `/`.
 4. **Importante**: `config.js` ficará público no repositório — a `anon key` do Supabase é destinada a ser pública (a segurança real vem do RLS), mas confirme que o RLS está ativo em todas as tabelas antes de publicar.
 
+## Fluxo do ciclo licitatório (construído por blocos)
+
+A tela de Licitação está sendo construída em blocos sucessivos, mantendo um único modal (sem abas) por escolha do usuário. Bloco 1 — **Recebimento/Cadastro + Itens do edital + Precificação** — implementado:
+- Cabeçalho expandido com todos os dados do edital (registro de preço, valor total estimado, modo de disputa, abertura, sessão pública, prazos, pregoeiro/contato, endereços).
+- Tabela de itens agora vincula `produto_id` ao cadastro de Produtos (select, com opção "Outro/não cadastrado" para texto livre) — ao escolher um produto, `custo_unitario` e `marca_fabricante` são pré-preenchidos a partir do cadastro.
+- Precificação: `margem_percentual` definida por item gera `valor_minimo` automaticamente (`custo_unitario × (1 + margem/100)`), recalculado a cada mudança de custo ou margem. `valor_inicial` é digitado livremente (estratégia de abertura de lance).
+- `valor_referencia` (valor estimado do edital) é opcional — vazio significa "Sigiloso".
+- Campos de **resultado** (`status`, `empresa_vencedora_id`, `parceiro_id`, `motivo_perda`, `valor_final`) seguem existindo no banco (preservados ao editar) mas **não aparecem neste modal** — ficam para o próximo bloco (Sessão Pública/Resultado), que vai cuidar de marcar vencedor/perda por item.
+
 ## Pendências conhecidas (próximos passos sugeridos)
 
-- Vincular automaticamente `licitacao_itens.produto_descricao` ao cadastro de `produtos` (hoje é texto livre com sugestão via `<datalist>`, sem FK).
+- Próximo bloco: tela/seção de **Resultado da Sessão Pública** (status por item, empresa vencedora, motivo da perda) — hoje só editável via banco, removida do modal de cadastro+precificação para separar as etapas.
+- Bloco de **Habilitação** e **Monitoramento** (vistos na referência visual do Licitei) ainda não têm equivalente no GestLicit.
 - Ao gerar uma Ata a partir de uma Licitação ganha, pré-popular os itens da ata a partir dos itens da licitação com status "Ganhou" (hoje a vinculação `licitacao_id` existe, mas os itens da ata são lançados manualmente).
 - Relatório de Resultado Mensal em PDF é texto simples (sem tabela formatada); considerar adicionar `jspdf-autotable` se for necessário um layout mais profissional para impressão/compartilhamento externo.

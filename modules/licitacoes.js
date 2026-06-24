@@ -1,8 +1,8 @@
 import * as Service from '../supabase-service.js';
 import { getState, canWrite, isAdmin } from '../state.js';
-import { byId, escapeHtml, formatDate, parseNumber, formatCurrency } from '../helpers.js';
+import { byId, escapeHtml, formatDate, parseNumber, formatCurrency, toDatetimeLocalValue } from '../helpers.js';
 import { openModal, closeModal, confirmDialog, showToast, badge, renderEmptyState } from '../ui.js';
-import { MODALIDADES, STATUS_LICITACAO, STATUS_COLOR, UFS, ICONS } from '../constants.js';
+import { MODALIDADES, MODOS_DISPUTA, STATUS_LICITACAO, STATUS_COLOR, UFS, ICONS } from '../constants.js';
 
 let cache = [];
 let itemsByLicitacao = new Map();
@@ -114,7 +114,10 @@ async function abrirFormulario(licitacaoId) {
   editingLicitacaoId = licitacaoId || null;
   let licitacao = {
     numero_pregao: '', numero_processo: '', orgao_id: '', uf: '', modalidade: 'Pregão Eletrônico',
-    data_sessao: '', objeto: '', recurso_contrarrazao: false, motivo_rc: '', deferido_indeferido: '', observacoes: '',
+    registro_preco: false, valor_total_estimado: '', modo_disputa: '', data_abertura: '', data_sessao: '', hora_sessao: '',
+    prazo_entrega: '', prazo_pagamento: '', validade_proposta: '',
+    nome_pregoeiro: '', telefone_pregoeiro: '', email_pregoeiro: '', enderecos: '',
+    objeto: '', recurso_contrarrazao: false, motivo_rc: '', deferido_indeferido: '', observacoes: '',
   };
   editingItems = [];
   originalItemIds = new Set();
@@ -132,14 +135,42 @@ async function abrirFormulario(licitacaoId) {
 
   const bodyHtml = `
     <form id="licitacao-form">
-      <div class="form-grid">
+      <div class="form-section-title">Dados gerais</div>
+      <div class="form-grid cols-3">
         <div class="form-field"><label>Nº do Pregão *</label><input required id="f-numero-pregao" value="${escapeHtml(licitacao.numero_pregao || '')}" /></div>
         <div class="form-field"><label>Nº do Processo</label><input id="f-numero-processo" value="${escapeHtml(licitacao.numero_processo || '')}" /></div>
         <div class="form-field"><label>Órgão</label><select id="f-orgao-id"><option value="">Selecione...</option>${orgaosOptions}</select></div>
         <div class="form-field"><label>UF</label><select id="f-uf"><option value="">-</option>${UFS.map((uf) => `<option ${uf === licitacao.uf ? 'selected' : ''}>${uf}</option>`).join('')}</select></div>
         <div class="form-field"><label>Modalidade</label><select id="f-modalidade">${MODALIDADES.map((m) => `<option ${m === licitacao.modalidade ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
-        <div class="form-field"><label>Data da Sessão</label><input type="date" id="f-data-sessao" value="${licitacao.data_sessao || ''}" /></div>
-        <div class="form-field span-2"><label>Objeto</label><textarea id="f-objeto">${escapeHtml(licitacao.objeto || '')}</textarea></div>
+        <div class="form-field"><label>Modo de Disputa</label><select id="f-modo-disputa"><option value="">-</option>${MODOS_DISPUTA.map((m) => `<option ${m === licitacao.modo_disputa ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
+        <div class="form-field"><label>Valor Total Estimado</label><input id="f-valor-total-estimado" value="${licitacao.valor_total_estimado ?? ''}" placeholder="0,00" /></div>
+        <div class="form-field">
+          <label>Registro de Preço?</label>
+          <div class="checkbox-field" style="height:38px;"><input type="checkbox" id="f-registro-preco" ${licitacao.registro_preco ? 'checked' : ''} /> Sim</div>
+        </div>
+      </div>
+
+      <div class="form-section-title">Datas e prazos</div>
+      <div class="form-grid cols-3">
+        <div class="form-field"><label>Abertura (data/hora)</label><input type="datetime-local" id="f-data-abertura" value="${toDatetimeLocalValue(licitacao.data_abertura)}" /></div>
+        <div class="form-field"><label>Data da Sessão Pública</label><input type="date" id="f-data-sessao" value="${licitacao.data_sessao || ''}" /></div>
+        <div class="form-field"><label>Hora da Sessão Pública</label><input type="time" id="f-hora-sessao" value="${licitacao.hora_sessao || ''}" /></div>
+        <div class="form-field"><label>Validade da Proposta</label><input id="f-validade-proposta" value="${escapeHtml(licitacao.validade_proposta || '')}" placeholder="Ex: 60 dias" /></div>
+        <div class="form-field"><label>Prazo de Entrega</label><input id="f-prazo-entrega" value="${escapeHtml(licitacao.prazo_entrega || '')}" /></div>
+        <div class="form-field"><label>Prazo de Pagamento</label><input id="f-prazo-pagamento" value="${escapeHtml(licitacao.prazo_pagamento || '')}" /></div>
+      </div>
+
+      <div class="form-section-title">Pregoeiro e contato</div>
+      <div class="form-grid cols-3">
+        <div class="form-field"><label>Nome do Pregoeiro</label><input id="f-nome-pregoeiro" value="${escapeHtml(licitacao.nome_pregoeiro || '')}" /></div>
+        <div class="form-field"><label>Telefone</label><input id="f-telefone-pregoeiro" value="${escapeHtml(licitacao.telefone_pregoeiro || '')}" /></div>
+        <div class="form-field"><label>Email</label><input id="f-email-pregoeiro" value="${escapeHtml(licitacao.email_pregoeiro || '')}" /></div>
+        <div class="form-field span-3"><label>Endereços</label><input id="f-enderecos" value="${escapeHtml(licitacao.enderecos || '')}" /></div>
+      </div>
+
+      <div class="form-section-title">Objeto e recurso</div>
+      <div class="form-grid cols-3">
+        <div class="form-field span-3"><label>Objeto</label><textarea id="f-objeto">${escapeHtml(licitacao.objeto || '')}</textarea></div>
         <div class="form-field">
           <label>Houve Recurso/Contrarrazão?</label>
           <div class="checkbox-field" style="height:38px;"><input type="checkbox" id="f-recurso" ${licitacao.recurso_contrarrazao ? 'checked' : ''} /> Sim</div>
@@ -148,13 +179,16 @@ async function abrirFormulario(licitacaoId) {
           <label>Deferido/Indeferido</label>
           <select id="f-deferido"><option value="">-</option><option ${licitacao.deferido_indeferido === 'Deferido' ? 'selected' : ''}>Deferido</option><option ${licitacao.deferido_indeferido === 'Indeferido' ? 'selected' : ''}>Indeferido</option></select>
         </div>
-        <div class="form-field span-2"><label>Motivo do Recurso/Contrarrazão</label><input id="f-motivo-rc" value="${escapeHtml(licitacao.motivo_rc || '')}" /></div>
-        <div class="form-field span-2"><label>Observações</label><textarea id="f-observacoes">${escapeHtml(licitacao.observacoes || '')}</textarea></div>
+        <div class="form-field span-3"><label>Motivo do Recurso/Contrarrazão</label><input id="f-motivo-rc" value="${escapeHtml(licitacao.motivo_rc || '')}" /></div>
+        <div class="form-field span-3"><label>Observações</label><textarea id="f-observacoes">${escapeHtml(licitacao.observacoes || '')}</textarea></div>
       </div>
 
       <div class="card items-table-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <strong>Itens disputados</strong>
+          <div>
+            <strong>Itens do edital — Precificação</strong>
+            <div style="color:var(--gray-500); font-size:12px;">Vincule o produto para puxar o custo, informe a margem e o Valor Mínimo é calculado automaticamente.</div>
+          </div>
           <button type="button" class="btn btn-ghost btn-sm" data-action="licitacoes.addItem">${ICONS.plus} Adicionar item</button>
         </div>
         <div id="licitacao-itens-table"></div>
@@ -163,7 +197,7 @@ async function abrirFormulario(licitacaoId) {
   `;
 
   openModal(licitacaoId ? 'Editar Licitação' : 'Nova Licitação', bodyHtml, {
-    size: 'lg',
+    size: 'xl',
     footerHtml: `
       <button type="button" class="btn btn-ghost" data-action="modal.close">Cancelar</button>
       <button type="button" class="btn btn-primary" data-action="licitacoes.salvar">Salvar</button>
@@ -176,7 +210,7 @@ async function abrirFormulario(licitacaoId) {
 function renderItemsTable() {
   const wrap = byId('licitacao-itens-table');
   if (!wrap) return;
-  const { concorrentes, parceiros, produtos } = getState().lookups;
+  const { produtos } = getState().lookups;
 
   if (!editingItems.length) {
     wrap.innerHTML = renderEmptyState('Nenhum item adicionado.');
@@ -188,44 +222,35 @@ function renderItemsTable() {
       <table class="data-table">
         <thead>
           <tr>
-            <th>Item</th><th>Produto</th><th>Qtd</th><th>Valor Inicial</th><th>Valor Mínimo</th><th>Valor Final</th>
-            <th>Status</th><th>Vencedor</th><th>Parceiro</th><th>Motivo da perda</th><th></th>
+            <th>Item</th><th>Produto</th><th>Qtd</th><th>Marca/Fabricante</th><th>Modelo/Versão</th>
+            <th>Valor Ref.</th><th>Custo</th><th>Margem %</th><th>Valor Mínimo</th><th>Valor Inicial</th><th></th>
           </tr>
         </thead>
         <tbody>
           ${editingItems.map((item, idx) => `
             <tr data-row="${idx}">
               <td><input type="number" min="1" data-field="item_numero" value="${item.item_numero ?? idx + 1}" style="width:54px;" /></td>
-              <td><input type="text" list="produtos-list" data-field="produto_descricao" value="${escapeHtml(item.produto_descricao ?? '')}" style="min-width:160px;" placeholder="Produto" /></td>
+              <td>
+                <select data-field="produto_id" style="min-width:150px;">
+                  <option value="">— Outro / não cadastrado —</option>
+                  ${produtos.map((p) => `<option value="${p.id}" ${String(item.produto_id) === String(p.id) ? 'selected' : ''}>${escapeHtml(p.nome)}</option>`).join('')}
+                </select>
+                <input type="text" data-field="produto_descricao" value="${escapeHtml(item.produto_descricao ?? '')}" style="min-width:150px; margin-top:4px;" placeholder="Descrição/detalhe" />
+              </td>
               <td><input type="text" data-field="quantidade" value="${item.quantidade ?? ''}" style="width:70px;" /></td>
-              <td><input type="text" data-field="valor_inicial" value="${item.valor_inicial ?? ''}" style="width:90px;" /></td>
+              <td><input type="text" data-field="marca_fabricante" value="${escapeHtml(item.marca_fabricante ?? '')}" style="min-width:120px;" /></td>
+              <td><input type="text" data-field="modelo_versao" value="${escapeHtml(item.modelo_versao ?? '')}" style="min-width:110px;" /></td>
+              <td><input type="text" data-field="valor_referencia" value="${item.valor_referencia ?? ''}" style="width:90px;" placeholder="Sigiloso" /></td>
+              <td><input type="text" data-field="custo_unitario" value="${item.custo_unitario ?? ''}" style="width:90px;" /></td>
+              <td><input type="text" data-field="margem_percentual" value="${item.margem_percentual ?? ''}" style="width:70px;" /></td>
               <td><input type="text" data-field="valor_minimo" value="${item.valor_minimo ?? ''}" style="width:90px;" /></td>
-              <td><input type="text" data-field="valor_final" value="${item.valor_final ?? ''}" style="width:90px;" /></td>
-              <td>
-                <select data-field="status" style="min-width:130px;">
-                  ${STATUS_LICITACAO.map((s) => `<option value="${s}" ${item.status === s ? 'selected' : ''}>${s}</option>`).join('')}
-                </select>
-              </td>
-              <td>
-                <select data-field="empresa_vencedora_id" style="min-width:140px;">
-                  <option value="">-</option>
-                  ${concorrentes.map((c) => `<option value="${c.id}" ${String(item.empresa_vencedora_id) === String(c.id) ? 'selected' : ''}>${escapeHtml(c.nome)}</option>`).join('')}
-                </select>
-              </td>
-              <td>
-                <select data-field="parceiro_id" style="min-width:140px;">
-                  <option value="">-</option>
-                  ${parceiros.map((p) => `<option value="${p.id}" ${String(item.parceiro_id) === String(p.id) ? 'selected' : ''}>${escapeHtml(p.razao_social)}</option>`).join('')}
-                </select>
-              </td>
-              <td><input type="text" data-field="motivo_perda" value="${escapeHtml(item.motivo_perda ?? '')}" style="min-width:160px;" /></td>
+              <td><input type="text" data-field="valor_inicial" value="${item.valor_inicial ?? ''}" style="width:90px;" /></td>
               <td><button type="button" class="icon-btn" data-action="licitacoes.removerItem" data-row="${idx}">${ICONS.trash}</button></td>
             </tr>
           `).join('')}
         </tbody>
       </table>
     </div>
-    <datalist id="produtos-list">${produtos.map((p) => `<option value="${escapeHtml(p.nome)}"></option>`).join('')}</datalist>
   `;
 
   wrap.querySelectorAll('[data-field]').forEach((el) => {
@@ -234,17 +259,50 @@ function renderItemsTable() {
   });
 }
 
+function recalcValorMinimo(item) {
+  const custo = parseNumber(item.custo_unitario);
+  const margem = parseNumber(item.margem_percentual);
+  if (custo > 0) {
+    item.valor_minimo = (custo * (1 + margem / 100)).toFixed(2);
+  }
+}
+
 function onItemFieldChange(event) {
   const row = event.target.closest('tr');
   const idx = Number(row.dataset.row);
   const field = event.target.dataset.field;
   const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
-  editingItems[idx][field] = value;
+  const item = editingItems[idx];
+  item[field] = value;
+
+  if (field === 'produto_id' && value) {
+    const produto = getState().lookups.produtos.find((p) => String(p.id) === String(value));
+    if (produto) {
+      if (!item.produto_descricao) {
+        item.produto_descricao = produto.nome;
+        row.querySelector('[data-field="produto_descricao"]').value = produto.nome;
+      }
+      if (!item.marca_fabricante && produto.fabricante) {
+        item.marca_fabricante = produto.fabricante;
+        row.querySelector('[data-field="marca_fabricante"]').value = produto.fabricante;
+      }
+      item.custo_unitario = produto.preco_custo ?? '';
+      row.querySelector('[data-field="custo_unitario"]').value = item.custo_unitario;
+      recalcValorMinimo(item);
+      row.querySelector('[data-field="valor_minimo"]').value = item.valor_minimo ?? '';
+    }
+  }
+
+  if (field === 'custo_unitario' || field === 'margem_percentual') {
+    recalcValorMinimo(item);
+    row.querySelector('[data-field="valor_minimo"]').value = item.valor_minimo ?? '';
+  }
 }
 
 function addItem() {
   editingItems.push({
-    id: null, item_numero: editingItems.length + 1, produto_descricao: '', quantidade: '',
+    id: null, item_numero: editingItems.length + 1, produto_id: '', produto_descricao: '', quantidade: '',
+    marca_fabricante: '', modelo_versao: '', valor_referencia: '', custo_unitario: '', margem_percentual: '',
     valor_inicial: '', valor_minimo: '', valor_final: '', status: 'Em disputa',
     motivo_perda: '', empresa_vencedora_id: '', parceiro_id: '',
   });
@@ -258,13 +316,26 @@ function removerItem(target) {
 }
 
 async function salvar() {
+  const dataAbertura = byId('f-data-abertura').value;
   const payload = {
     numero_pregao: byId('f-numero-pregao').value.trim(),
     numero_processo: byId('f-numero-processo').value.trim() || null,
     orgao_id: byId('f-orgao-id').value || null,
     uf: byId('f-uf').value || null,
     modalidade: byId('f-modalidade').value,
+    registro_preco: byId('f-registro-preco').checked,
+    valor_total_estimado: byId('f-valor-total-estimado').value ? parseNumber(byId('f-valor-total-estimado').value) : null,
+    modo_disputa: byId('f-modo-disputa').value || null,
+    data_abertura: dataAbertura ? new Date(dataAbertura).toISOString() : null,
     data_sessao: byId('f-data-sessao').value || null,
+    hora_sessao: byId('f-hora-sessao').value || null,
+    validade_proposta: byId('f-validade-proposta').value.trim() || null,
+    prazo_entrega: byId('f-prazo-entrega').value.trim() || null,
+    prazo_pagamento: byId('f-prazo-pagamento').value.trim() || null,
+    nome_pregoeiro: byId('f-nome-pregoeiro').value.trim() || null,
+    telefone_pregoeiro: byId('f-telefone-pregoeiro').value.trim() || null,
+    email_pregoeiro: byId('f-email-pregoeiro').value.trim() || null,
+    enderecos: byId('f-enderecos').value.trim() || null,
     objeto: byId('f-objeto').value.trim() || null,
     recurso_contrarrazao: byId('f-recurso').checked,
     motivo_rc: byId('f-motivo-rc').value.trim() || null,
@@ -290,8 +361,14 @@ async function salvar() {
       const itemPayload = {
         licitacao_id: editingLicitacaoId,
         item_numero: Number(item.item_numero) || 1,
+        produto_id: item.produto_id || null,
         produto_descricao: item.produto_descricao || null,
         quantidade: parseNumber(item.quantidade),
+        marca_fabricante: item.marca_fabricante || null,
+        modelo_versao: item.modelo_versao || null,
+        valor_referencia: item.valor_referencia !== '' && item.valor_referencia != null ? parseNumber(item.valor_referencia) : null,
+        custo_unitario: item.custo_unitario !== '' && item.custo_unitario != null ? parseNumber(item.custo_unitario) : null,
+        margem_percentual: item.margem_percentual !== '' && item.margem_percentual != null ? parseNumber(item.margem_percentual) : null,
         valor_inicial: parseNumber(item.valor_inicial),
         valor_minimo: parseNumber(item.valor_minimo),
         valor_final: parseNumber(item.valor_final),

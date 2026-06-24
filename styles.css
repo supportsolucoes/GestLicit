@@ -348,7 +348,10 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .form-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
 .form-field { display: flex; flex-direction: column; gap: 6px; }
 .form-field.span-2 { grid-column: span 2; }
+.form-field.span-3 { grid-column: span 3; }
 .form-field label { font-size: 12.5px; font-weight: 600; color: var(--gray-700); }
+.form-section-title { font-size: 13px; font-weight: 700; color: var(--gray-700); margin: 18px 0 10px; }
+.form-section-title:first-child { margin-top: 0; }
 
 .form-field input, .form-field select, .form-field textarea {
   border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
@@ -364,7 +367,7 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 
 @media (max-width: 720px) {
   .form-grid, .form-grid.cols-3 { grid-template-columns: 1fr; }
-  .form-field.span-2 { grid-column: span 1; }
+  .form-field.span-2, .form-field.span-3 { grid-column: span 1; }
 }
 
 /* ---------- Modal ---------- */
@@ -383,6 +386,7 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .modal-sm { max-width: 420px; }
 .modal-md { max-width: 640px; }
 .modal-lg { max-width: 920px; }
+.modal-xl { max-width: 1240px; }
 
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;

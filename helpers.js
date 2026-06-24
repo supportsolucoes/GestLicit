@@ -37,6 +37,14 @@ export function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+export function toDatetimeLocalValue(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function daysUntil(dateStr) {
   if (!dateStr) return null;
   const target = new Date(`${dateStr}T00:00:00`);

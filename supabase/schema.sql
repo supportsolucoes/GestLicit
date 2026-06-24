@@ -274,6 +274,33 @@ create table if not exists public.agenda_eventos (
 );
 
 -- ============================================================
+-- ALTERAÇÕES v1.1 — Bloco "Recebimento da Licitação + Precificação"
+-- Aditivo e idempotente: seguro rodar de novo sobre o banco já em produção.
+-- ============================================================
+
+-- licitacoes: dados completos do edital (cabeçalho)
+alter table public.licitacoes add column if not exists registro_preco boolean not null default false;
+alter table public.licitacoes add column if not exists valor_total_estimado numeric(14,2);
+alter table public.licitacoes add column if not exists modo_disputa text
+  check (modo_disputa in ('Aberto', 'Fechado', 'Aberto-Fechado') or modo_disputa is null);
+alter table public.licitacoes add column if not exists data_abertura timestamptz;
+alter table public.licitacoes add column if not exists hora_sessao time;
+alter table public.licitacoes add column if not exists prazo_entrega text;
+alter table public.licitacoes add column if not exists prazo_pagamento text;
+alter table public.licitacoes add column if not exists validade_proposta text;
+alter table public.licitacoes add column if not exists nome_pregoeiro text;
+alter table public.licitacoes add column if not exists telefone_pregoeiro text;
+alter table public.licitacoes add column if not exists email_pregoeiro text;
+alter table public.licitacoes add column if not exists enderecos text;
+
+-- licitacao_itens: precificação (custo do produto + margem -> valor mínimo) e dados do item do edital
+alter table public.licitacao_itens add column if not exists marca_fabricante text;
+alter table public.licitacao_itens add column if not exists modelo_versao text;
+alter table public.licitacao_itens add column if not exists valor_referencia numeric(14,2);
+alter table public.licitacao_itens add column if not exists custo_unitario numeric(14,2);
+alter table public.licitacao_itens add column if not exists margem_percentual numeric(6,2);
+
+-- ============================================================
 -- TRIGGERS updated_at
 -- ============================================================
 do $$
