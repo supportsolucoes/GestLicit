@@ -533,6 +533,62 @@ alter table public.concorrentes add column if not exists cnpj text;
 notify pgrst, 'reload schema';
 
 -- ============================================================
+-- ALTERAÇÕES v1.7 — Bloco "Configurações: chave de API e dados de demonstração"
+-- Aditivo e idempotente: seguro rodar de novo sobre o banco já em produção.
+-- ============================================================
+
+-- app_settings: configurações de sistema (ex.: chave da API do Portal da
+-- Transparência), editáveis pela tela de Configurações em vez de config.js.
+create table if not exists public.app_settings (
+  chave       text primary key,
+  valor       text,
+  updated_at  timestamptz not null default now()
+);
+
+alter table public.app_settings enable row level security;
+
+drop policy if exists "app_settings_select" on public.app_settings;
+create policy "app_settings_select" on public.app_settings for select to authenticated using (true);
+
+drop policy if exists "app_settings_upsert" on public.app_settings;
+create policy "app_settings_upsert" on public.app_settings for insert to authenticated
+  with check (public.get_user_role() = 'administrador');
+
+drop policy if exists "app_settings_update" on public.app_settings;
+create policy "app_settings_update" on public.app_settings for update to authenticated
+  using (public.get_user_role() = 'administrador')
+  with check (public.get_user_role() = 'administrador');
+
+drop trigger if exists set_updated_at on public.app_settings;
+create trigger set_updated_at before update on public.app_settings
+  for each row execute function public.set_updated_at();
+
+-- demo_seed_log: rastreia os registros criados pelo gerador de "Dados de
+-- demonstração" (Configurações), para permitir remover tudo de uma vez depois.
+create table if not exists public.demo_seed_log (
+  id            bigserial primary key,
+  tabela        text not null,
+  registro_id   bigint not null,
+  created_at    timestamptz not null default now()
+);
+
+alter table public.demo_seed_log enable row level security;
+
+drop policy if exists "demo_seed_log_select" on public.demo_seed_log;
+create policy "demo_seed_log_select" on public.demo_seed_log for select to authenticated
+  using (public.get_user_role() = 'administrador');
+
+drop policy if exists "demo_seed_log_insert" on public.demo_seed_log;
+create policy "demo_seed_log_insert" on public.demo_seed_log for insert to authenticated
+  with check (public.get_user_role() = 'administrador');
+
+drop policy if exists "demo_seed_log_delete" on public.demo_seed_log;
+create policy "demo_seed_log_delete" on public.demo_seed_log for delete to authenticated
+  using (public.get_user_role() = 'administrador');
+
+notify pgrst, 'reload schema';
+
+-- ============================================================
 -- TRIGGERS updated_at
 -- ============================================================
 do $$

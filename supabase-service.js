@@ -277,6 +277,29 @@ export async function deleteEmpenhoItem(id) {
 }
 
 // ============================================================
+// Configurações: app_settings e log de dados de demonstração
+// ============================================================
+export async function listAppSettings() {
+  return handle(sb().from('app_settings').select('*'));
+}
+
+export async function upsertAppSetting(chave, valor) {
+  return handle(sb().from('app_settings').upsert({ chave, valor }).select().single());
+}
+
+export async function logDemoSeed(tabela, registroId) {
+  return handle(sb().from('demo_seed_log').insert({ tabela, registro_id: registroId }));
+}
+
+export async function listDemoSeedLog() {
+  return handle(sb().from('demo_seed_log').select('*').order('created_at'));
+}
+
+export async function clearDemoSeedLog() {
+  return handle(sb().from('demo_seed_log').delete().neq('id', 0));
+}
+
+// ============================================================
 // Documentos (Supabase Storage)
 // ============================================================
 const DOCUMENTOS_BUCKET = 'documentos';

@@ -1,6 +1,8 @@
 // APIs públicas externas (Receita Federal via BrasilAPI, PNCP, Portal da Transparência).
 // Nenhum dado consultado aqui é armazenado no Supabase — é sempre uma consulta ao vivo.
 
+import { getState } from './state.js';
+
 export function onlyDigits(value) {
   return String(value || '').replace(/\D/g, '');
 }
@@ -31,7 +33,7 @@ export async function fetchContratosPncp(cnpjDigits, { maxPaginas = 6, tamPagina
 }
 
 function getPortalTransparenciaApiKey() {
-  return window.GESTLICIT_CONFIG?.portalTransparenciaApiKey || '';
+  return getState().lookups.settings?.portal_transparencia_api_key || '';
 }
 
 async function fetchSancoes(endpoint, cnpjDigits, apiKey) {

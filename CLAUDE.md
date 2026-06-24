@@ -44,6 +44,8 @@ Schema 100% relacional (sem JSONB de estado, diferente do projeto Fluxo) — ver
 - `certidoes`, `documentos`, `agenda_eventos` — regularidade fiscal, repositório de arquivos e prazos. `agenda_eventos` tem `referencia_tipo`/`referencia_id` genéricos — usado por `licitacoes.js` para vincular lembretes a uma licitação específica (`referencia_tipo = 'licitacao'`).
 - `tags` + `licitacao_tags` — rótulos livres (nome + cor) atribuíveis a licitações via N:N. Tags do sistema (Precificado, Cadastrado no portal, Ganha, Recurso, Perdida, Suspenso, Cancelada) são seedadas pela migration; o usuário pode criar outras pela UI.
 - `app_profiles` — perfil/role do usuário (`administrador`, `comercial`, `financeiro`, `consulta`), criado automaticamente por trigger no cadastro
+- `app_settings` — chave/valor de configurações de sistema (hoje só `portal_transparencia_api_key`), editável em Configurações em vez de `config.js`. Select liberado para qualquer autenticado (a Análise de Concorrente precisa ler em qualquer papel), insert/update restrito a `administrador`. Cacheada em `state.lookups.settings` (mapa chave→valor), atualizada por `refreshLookups()`.
+- `demo_seed_log` — rastreia os registros criados pelo gerador de "Dados de demonstração" (Configurações), para permitir apagar tudo de uma vez. Só `administrador` lê/escreve.
 
 RLS: qualquer autenticado lê tudo (é uma equipe única); apenas `consulta` não pode inserir/editar; apenas `administrador` pode excluir.
 
@@ -84,7 +86,7 @@ Não há framework de UI. `app.js` mantém `MODULES = { dashboard, licitacoes, a
 1. Criar repositório (ex.: `controlehumana/GestLicit`, mesmo padrão do HumWMS).
 2. `git init && git add . && git commit -m "..." && git remote add origin <url> && git push -u origin main`.
 3. Em **Settings → Pages**, branch `main`, pasta raiz `/`.
-4. **Importante**: `config.js` ficará público no repositório — a `anon key` do Supabase é destinada a ser pública (a segurança real vem do RLS), mas confirme que o RLS está ativo em todas as tabelas antes de publicar.
+4. **Importante**: `config.js` ficará público no repositório — a `anon key` do Supabase é destinada a ser pública (a segurança real vem do RLS), mas confirme que o RLS está ativo em todas as tabelas antes de publicar. Desde o Bloco 6, `config.js` não guarda mais segredos de integração (a chave do Portal da Transparência foi movida para a tabela `app_settings`, editável em Configurações) — só credenciais do Supabase, que já são públicas por design.
 
 ## Fluxo do ciclo licitatório (construído por blocos)
 
@@ -127,6 +129,12 @@ Bloco 5 — **Análise de Concorrente** — implementado em `modules/concorrente
 - `modules/_crud.js` ganhou um hook genérico `config.extraRowActions(record)` (opcional, retrocompatível) para permitir esse botão "Analisar" por linha sem duplicar a fábrica de CRUD.
 - Exportação para Excel reaproveita o padrão já usado em `relatorios.js` (`window.XLSX.utils.aoa_to_sheet` + `writeFile`).
 - Validado com harness isolado chamando as APIs **reais** (não mockadas, já que são públicas e gratuitas) — resultado bateu com a referência visual ponto a ponto.
+
+Bloco 6 — **Configurações: chave de API editável + Dados de demonstração** — implementado em `modules/configuracoes.js`:
+- **Integrações**: campo "Chave da API (Portal da Transparência)" salvo em `app_settings` (não mais em `config.js`). `external-apis.js#getPortalTransparenciaApiKey()` agora lê de `getState().lookups.settings.portal_transparencia_api_key` em vez de `window.GESTLICIT_CONFIG`. Isso também é uma melhoria de segurança incidental: antes a chave ficava num arquivo estático público (legível por qualquer um na internet); agora fica numa tabela só legível por usuário autenticado do sistema.
+- **Dados de demonstração**: botão "Criar exemplo completo" gera, via as próprias funções de serviço já existentes (não SQL direto), uma licitação de ponta a ponta com o sufixo "(EXEMPLO)" no nome — órgão, produto, licitação com item precificado e já com resultado de Pós-Disputa preenchido (`status='Ganhou'`), tag "Exemplo", lembrete de agenda, contrato vinculado, ata vinculada, e empenho vinculado à ata (40% do saldo, replicando o cenário que já tinha sido usado para validar o Bloco 4). Cada registro de topo (não os itens, que cascateiam) é logado em `demo_seed_log`. Botão "Remover dados de demonstração" lê esse log e apaga cada registro pela função de delete já existente do módulo correspondente, na ordem `empenhos → atas → contratos → agenda_eventos → licitacoes → produtos → orgaos → tags` (ordem que respeita os `on delete restrict` de `produto_id`), depois limpa o log.
+- Migração "ALTERAÇÕES v1.7" em `supabase/schema.sql` (`app_settings` + `demo_seed_log`). **Ainda não aplicada no banco real.**
+- Validado com harness isolado (salvar chave, criar exemplo → confirma 8 registros logados, remover → confirma volta ao estado vazio).
 
 ## Pendências conhecidas (próximos passos sugeridos)
 

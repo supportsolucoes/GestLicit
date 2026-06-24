@@ -14,6 +14,7 @@ const state = {
     produtos: [],
     profiles: [],
     tags: [],
+    settings: {},
   },
 };
 
@@ -54,15 +55,18 @@ export function setLookups(patch) {
 }
 
 export async function refreshLookups() {
-  const [orgaos, concorrentes, parceiros, produtos, profiles, tags] = await Promise.all([
+  const [orgaos, concorrentes, parceiros, produtos, profiles, tags, settingsRows] = await Promise.all([
     Service.Orgaos.list(),
     Service.Concorrentes.list(),
     Service.Parceiros.list(),
     Service.Produtos.list(),
     Service.Profiles.list(),
     Service.Tags.list(),
+    Service.listAppSettings(),
   ]);
-  setLookups({ orgaos, concorrentes, parceiros, produtos, profiles, tags });
+  const settings = {};
+  for (const row of settingsRows) settings[row.chave] = row.valor;
+  setLookups({ orgaos, concorrentes, parceiros, produtos, profiles, tags, settings });
 }
 
 export function currentUser() {
