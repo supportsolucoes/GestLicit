@@ -12,6 +12,7 @@ import * as Dashboard from './modules/dashboard.js';
 import * as Licitacoes from './modules/licitacoes.js';
 import * as Contratos from './modules/contratos.js';
 import * as Atas from './modules/atas.js';
+import * as Empenhos from './modules/empenhos.js';
 import * as Produtos from './modules/produtos.js';
 import * as Orgaos from './modules/orgaos.js';
 import * as Concorrentes from './modules/concorrentes.js';
@@ -28,6 +29,7 @@ const MODULES = {
   licitacoes: Licitacoes,
   contratos: Contratos,
   atas: Atas,
+  empenhos: Empenhos,
   produtos: Produtos,
   orgaos: Orgaos,
   concorrentes: Concorrentes,

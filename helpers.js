@@ -101,6 +101,14 @@ export function calcSaldoAtaItem(item, consumos) {
   return { consumido, restante, percentual };
 }
 
+export function calcSaldoAtaItemPorEmpenho(item, empenhoItensDoProduto) {
+  const empenhado = sumBy(empenhoItensDoProduto, (e) => e.quantidade_empenhada);
+  const total = Number(item.quantidade_total) || 0;
+  const restante = Math.max(total - empenhado, 0);
+  const percentual = total > 0 ? Math.min((empenhado / total) * 100, 100) : 0;
+  return { empenhado, restante, percentual };
+}
+
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

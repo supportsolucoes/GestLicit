@@ -64,7 +64,7 @@ function renderTable() {
               ${alert ? `<br/>${badge(alert.level === 'vencido' ? 'Vencido' : `Vence em ${alert.days}d`, alert.level === 'vencido' ? 'danger' : 'warning')}` : ''}
             </td>
             <td>${badge(c.situacao, STATUS_COLOR[c.situacao] || 'muted')}</td>
-            <td>${formatCurrency(valorTotalContrato(c.id))}</td>
+            <td>${formatCurrency(c.valor_contrato ?? valorTotalContrato(c.id))}</td>
             <td class="row-actions">
               <button class="icon-btn" data-action="contratos.editar" data-id="${c.id}" title="Editar">${ICONS.edit}</button>
               ${isAdmin() ? `<button class="icon-btn" data-action="contratos.excluir" data-id="${c.id}" title="Excluir">${ICONS.trash}</button>` : ''}
@@ -81,7 +81,7 @@ async function abrirFormulario(contratoId) {
   editingArquivoFile = null;
   let contrato = {
     numero_contrato: '', licitacao_id: '', orgao_id: '', data_contrato: '', data_assinatura: '',
-    vigencia_inicio: '', vigencia_fim: '', viabilidade: '', arquivo_url: '',
+    valor_contrato: '', vigencia_inicio: '', vigencia_fim: '', viabilidade: '', arquivo_url: '',
     prazo_entrega: '', prazo_entrega_uteis: false, prazo_pagamento: '', prazo_pagamento_uteis: false,
     telefone_contato: '', email_contato: '', situacao: 'Vigente', observacoes: '',
   };
@@ -114,6 +114,7 @@ async function abrirFormulario(contratoId) {
         <div class="form-field"><label>Data do Contrato</label><input type="date" id="f-data-contrato" value="${contrato.data_contrato || ''}" /></div>
         <div class="form-field"><label>Data de Assinatura</label><input type="date" id="f-data-assinatura" value="${contrato.data_assinatura || ''}" /></div>
         <div class="form-field"><label>Situação</label><select id="f-situacao">${SITUACOES_ATA.map((s) => `<option ${s === contrato.situacao ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+        <div class="form-field"><label>Valor do Contrato *</label><input required id="f-valor-contrato" value="${contrato.valor_contrato ?? ''}" placeholder="0,00" /></div>
       </div>
 
       <div class="form-section-title">Vigência e viabilidade</div>
@@ -249,7 +250,7 @@ function renderItensTotais() {
     byId('contrato-itens-table').after(wrap);
   }
   const total = sumBy(editingItems, (i) => parseNumber(i.valor_unitario) * parseNumber(i.quantidade_total));
-  wrap.innerHTML = `<span>Valor total do contrato: ${formatCurrency(total)}</span>`;
+  wrap.innerHTML = `<span>Soma dos itens cadastrados: ${formatCurrency(total)}</span>`;
 }
 
 function onItemFieldChange(event) {
@@ -342,6 +343,7 @@ async function salvar() {
     orgao_id: byId('f-orgao-id').value || null,
     data_contrato: byId('f-data-contrato').value || null,
     data_assinatura: byId('f-data-assinatura').value || null,
+    valor_contrato: byId('f-valor-contrato').value ? parseNumber(byId('f-valor-contrato').value) : null,
     vigencia_inicio: byId('f-vigencia-inicio').value || null,
     vigencia_fim: byId('f-vigencia-fim').value || null,
     viabilidade: byId('f-viabilidade').value || null,
@@ -361,6 +363,10 @@ async function salvar() {
   }
   if (!payload.licitacao_id) {
     showToast('Selecione a licitação relacionada a este contrato.', 'error');
+    return;
+  }
+  if (!payload.valor_contrato) {
+    showToast('Informe o valor do contrato.', 'error');
     return;
   }
   const itemSemProduto = editingItems.find((item) => !item.produto_id);

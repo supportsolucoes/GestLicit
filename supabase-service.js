@@ -230,6 +230,53 @@ export async function deleteContratoItem(id) {
 }
 
 // ============================================================
+// Empenhos
+// ============================================================
+const EMPENHO_SELECT = '*, orgao:orgaos(id,nome), ata:atas(id,numero_ata), contrato:contratos(id,numero_contrato)';
+
+export async function listEmpenhos() {
+  return handle(sb().from('empenhos').select(EMPENHO_SELECT).order('data_empenho', { ascending: false }));
+}
+
+export async function getEmpenho(id) {
+  return handle(sb().from('empenhos').select(EMPENHO_SELECT).eq('id', id).single());
+}
+
+export async function createEmpenho(payload) {
+  return handle(sb().from('empenhos').insert(payload).select(EMPENHO_SELECT).single());
+}
+
+export async function updateEmpenho(id, payload) {
+  return handle(sb().from('empenhos').update(payload).eq('id', id).select(EMPENHO_SELECT).single());
+}
+
+export async function deleteEmpenho(id) {
+  return handle(sb().from('empenhos').delete().eq('id', id));
+}
+
+const EMPENHO_ITEM_SELECT = '*, produto:produtos(id,nome)';
+
+export async function listEmpenhoItens(empenhoId) {
+  return handle(sb().from('empenho_itens').select(EMPENHO_ITEM_SELECT).eq('empenho_id', empenhoId).order('item_numero'));
+}
+
+export async function listAllEmpenhoItens() {
+  return handle(sb().from('empenho_itens').select('*, empenho:empenhos(id,numero_empenho,ata_id,contrato_id,data_empenho,situacao)'));
+}
+
+export async function createEmpenhoItem(payload) {
+  return handle(sb().from('empenho_itens').insert(payload).select(EMPENHO_ITEM_SELECT).single());
+}
+
+export async function updateEmpenhoItem(id, payload) {
+  return handle(sb().from('empenho_itens').update(payload).eq('id', id).select(EMPENHO_ITEM_SELECT).single());
+}
+
+export async function deleteEmpenhoItem(id) {
+  return handle(sb().from('empenho_itens').delete().eq('id', id));
+}
+
+// ============================================================
 // Documentos (Supabase Storage)
 // ============================================================
 const DOCUMENTOS_BUCKET = 'documentos';
