@@ -48,7 +48,7 @@ export async function render(container) {
     </div>
     <div style="display:flex; gap:10px; flex-wrap:wrap;">
       <input type="text" id="analise-cnpj-input" placeholder="00.000.000/0000-00" style="flex:1; min-width:220px; max-width:320px; border:1px solid var(--gray-200); border-radius:8px; padding:9px 11px;" />
-      <button class="btn btn-primary" data-action="concorrentes.analisarBusca">${ICONS.search} Analisar</button>
+      <button class="btn btn-primary" id="analise-btn-buscar" data-action="concorrentes.analisarBusca">${ICONS.search} Analisar</button>
     </div>
     <div id="analise-resultado" style="margin-top:18px;"></div>
   `;
@@ -70,13 +70,30 @@ function analisarLinha(target) {
   analisarCnpj(cnpj);
 }
 
+function renderLoadingInline(mensagem) {
+  return `
+    <div class="loading-inline">
+      <div class="spinner"></div>
+      <div>${escapeHtml(mensagem)}</div>
+    </div>
+  `;
+}
+
+function setAnalisarBusy(busy) {
+  const btn = byId('analise-btn-buscar');
+  if (!btn) return;
+  btn.disabled = busy;
+  btn.innerHTML = busy ? `<span class="spinner spinner-sm"></span> Consultando...` : `${ICONS.search} Analisar`;
+}
+
 async function analisarCnpj(cnpjDigits) {
   if (cnpjDigits.length !== 14) {
     showToast('Informe um CNPJ válido (14 dígitos).', 'error');
     return;
   }
   const wrap = byId('analise-resultado');
-  wrap.innerHTML = renderEmptyState('Consultando fontes públicas...');
+  wrap.innerHTML = renderLoadingInline('Consultando Receita Federal, PNCP e Portal da Transparência...');
+  setAnalisarBusy(true);
 
   try {
     const [empresa, pncp, certidoes] = await Promise.all([
@@ -88,6 +105,8 @@ async function analisarCnpj(cnpjDigits) {
     renderResultado();
   } catch (err) {
     wrap.innerHTML = renderEmptyState(`Erro ao consultar: ${err.message || err}`);
+  } finally {
+    setAnalisarBusy(false);
   }
 }
 
@@ -169,7 +188,7 @@ function renderResultado() {
       ${contratos.length ? `
         <div class="table-wrap" style="max-height:420px; overflow-y:auto;">
           <table class="data-table">
-            <thead><tr><th>Título</th><th>Órgão</th><th>Cidade/UF</th><th>Modalidade</th><th>Assinatura</th><th>Valor</th></tr></thead>
+            <thead><tr><th>Título</th><th>Órgão</th><th>Cidade/UF</th><th>Modalidade</th><th>Assinatura</th><th>Valor</th><th></th></tr></thead>
             <tbody>
               ${contratos.map((c) => `
                 <tr>
@@ -179,6 +198,7 @@ function renderResultado() {
                   <td>${escapeHtml(c.modalidade_licitacao_nome || '-')}</td>
                   <td>${formatDate(c.data_assinatura)}</td>
                   <td>${formatCurrency(c.valor_global)}</td>
+                  <td>${c.item_url ? `<a href="https://pncp.gov.br/app${escapeHtml(c.item_url)}" target="_blank" rel="noopener" class="link-btn" style="white-space:nowrap;">Ver no PNCP</a>` : '-'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -198,7 +218,7 @@ function renderCertidoes(certidoes) {
   if (!certidoes.configured) {
     return `<p style="color:var(--gray-500); font-size:13px;">Chave da API do Portal da Transparência não configurada. Cadastre uma chave gratuita em
       <a href="https://api.portaldatransparencia.gov.br/api-de-dados/cadastrar-email" target="_blank" rel="noopener">api.portaldatransparencia.gov.br</a>
-      e cole em <code>config.js</code> (<code>portalTransparenciaApiKey</code>) para ativar esta seção.</p>`;
+      e cole em <strong>Configurações → Integrações</strong> para ativar esta seção.</p>`;
   }
   if (certidoes.erro) {
     return `<p style="color:var(--danger); font-size:13px;">Erro ao consultar certidões: ${escapeHtml(certidoes.erro)}</p>`;
@@ -236,10 +256,11 @@ function exportarExcel() {
   }
   if (!ultimaAnalise?.contratos?.length) return;
   const rows = [
-    ['Título', 'Descrição', 'Órgão', 'Cidade', 'UF', 'Modalidade', 'Data Assinatura', 'Valor'],
+    ['Título', 'Descrição', 'Órgão', 'Cidade', 'UF', 'Modalidade', 'Data Assinatura', 'Valor', 'Link PNCP'],
     ...ultimaAnalise.contratos.map((c) => [
       c.title || '', c.description || '', c.orgao_nome || '', c.municipio_nome || '', c.uf || '',
       c.modalidade_licitacao_nome || '', formatDate(c.data_assinatura), Number(c.valor_global) || 0,
+      c.item_url ? `https://pncp.gov.br/app${c.item_url}` : '',
     ]),
   ];
   const ws = window.XLSX.utils.aoa_to_sheet(rows);

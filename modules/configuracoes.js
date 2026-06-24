@@ -52,7 +52,7 @@ export async function render(container) {
     if (e.key === 'Enter') salvarChave();
   });
 
-  await reload();
+  await reload().catch((err) => showToast(err.message || 'Erro ao carregar usuários.', 'error'));
   await renderDemoStatus();
 }
 
@@ -143,7 +143,13 @@ async function salvarChave() {
 // ============================================================
 async function renderDemoStatus() {
   const wrap = byId('demo-status');
-  const log = await Service.listDemoSeedLog();
+  let log;
+  try {
+    log = await Service.listDemoSeedLog();
+  } catch (err) {
+    wrap.innerHTML = `<p style="color:var(--danger); font-size:13px;">Não foi possível carregar o status dos dados de demonstração (${escapeHtml(err.message || String(err))}). Confirme que a migração "ALTERAÇÕES v1.7" do <code>supabase/schema.sql</code> foi aplicada no banco.</p>`;
+    return;
+  }
   if (log.length) {
     wrap.innerHTML = `
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
