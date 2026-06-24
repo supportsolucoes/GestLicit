@@ -94,6 +94,7 @@ export function buildCrudModule(config) {
             <tr>
               ${config.columns.map((c) => `<td>${c.render ? c.render(r) : escapeHtml(r[c.key] ?? '-')}</td>`).join('')}
               <td class="row-actions">
+                ${config.extraRowActions ? config.extraRowActions(r) : ''}
                 <button class="icon-btn" data-action="${config.actionPrefix}.editar" data-id="${r.id}" title="Editar">${ICONS.edit}</button>
                 ${isAdmin() ? `<button class="icon-btn" data-action="${config.actionPrefix}.excluir" data-id="${r.id}" title="Excluir">${ICONS.trash}</button>` : ''}
               </td>

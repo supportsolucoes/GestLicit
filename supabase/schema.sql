@@ -444,6 +444,95 @@ $$;
 notify pgrst, 'reload schema';
 
 -- ============================================================
+-- ALTERAÇÕES v1.4 — Valor do contrato (assinado)
+-- Aditivo e idempotente: seguro rodar de novo sobre o banco já em produção.
+-- ============================================================
+alter table public.contratos add column if not exists valor_contrato numeric(14,2);
+
+notify pgrst, 'reload schema';
+
+-- ============================================================
+-- ALTERAÇÕES v1.5 — Bloco "Empenhos"
+-- Aditivo e idempotente: seguro rodar de novo sobre o banco já em produção.
+-- Empenho é a etapa de execução financeira que vem depois de uma Ata e/ou de
+-- um Contrato (ou pode ser "direto", sem nenhum dos dois). O saldo da Ata
+-- passa a ser calculado a partir dos Empenhos vinculados a ela, substituindo
+-- o ledger ata_consumos (que continua existindo no banco, mas não é mais
+-- usado pela UI para esse cálculo).
+-- ============================================================
+
+create table if not exists public.empenhos (
+  id                bigserial primary key,
+  numero_empenho    text not null,
+  ata_id            bigint references public.atas(id) on delete set null,
+  contrato_id       bigint references public.contratos(id) on delete set null,
+  orgao_id          bigint references public.orgaos(id) on delete set null,
+  data_empenho      date,
+  valor_empenhado   numeric(14,2),
+  situacao          text not null default 'Vigente' check (situacao in ('Vigente', 'Liquidado', 'Anulado')),
+  observacoes       text,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+create table if not exists public.empenho_itens (
+  id                    bigserial primary key,
+  empenho_id            bigint not null references public.empenhos(id) on delete cascade,
+  item_numero           integer not null default 1,
+  produto_id            bigint not null references public.produtos(id) on delete restrict,
+  produto_descricao     text,
+  quantidade_empenhada  numeric(14,2) not null default 0,
+  valor_unitario        numeric(14,2) not null default 0,
+  created_at            timestamptz not null default now(),
+  updated_at            timestamptz not null default now()
+);
+
+alter table public.empenhos     enable row level security;
+alter table public.empenho_itens enable row level security;
+
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['empenhos', 'empenho_itens']
+  loop
+    execute format('drop policy if exists "%1$s_select" on public.%1$I;', t);
+    execute format('create policy "%1$s_select" on public.%1$I for select to authenticated using (true);', t);
+
+    execute format('drop policy if exists "%1$s_insert" on public.%1$I;', t);
+    execute format('create policy "%1$s_insert" on public.%1$I for insert to authenticated
+                     with check (public.get_user_role() <> ''consulta'');', t);
+
+    execute format('drop policy if exists "%1$s_update" on public.%1$I;', t);
+    execute format('create policy "%1$s_update" on public.%1$I for update to authenticated
+                     using (public.get_user_role() <> ''consulta'')
+                     with check (public.get_user_role() <> ''consulta'');', t);
+
+    execute format('drop policy if exists "%1$s_delete" on public.%1$I;', t);
+    execute format('create policy "%1$s_delete" on public.%1$I for delete to authenticated
+                     using (public.get_user_role() = ''administrador'');', t);
+
+    execute format('drop trigger if exists set_updated_at on public.%I;', t);
+    execute format('create trigger set_updated_at before update on public.%I
+                     for each row execute function public.set_updated_at();', t);
+  end loop;
+end;
+$$;
+
+notify pgrst, 'reload schema';
+
+-- ============================================================
+-- ALTERAÇÕES v1.6 — Bloco "Análise de Concorrente"
+-- Aditivo e idempotente: seguro rodar de novo sobre o banco já em produção.
+-- As informações da análise (Receita Federal, PNCP, Portal da Transparência)
+-- NÃO são armazenadas — são sempre consultadas em tempo real. Só o CNPJ do
+-- concorrente (opcional) é persistido, para permitir o atalho "Analisar".
+-- ============================================================
+alter table public.concorrentes add column if not exists cnpj text;
+
+notify pgrst, 'reload schema';
+
+-- ============================================================
 -- TRIGGERS updated_at
 -- ============================================================
 do $$
