@@ -364,6 +364,86 @@ insert into public.tags (nome, cor) values
 on conflict (nome) do nothing;
 
 -- ============================================================
+-- ALTERAÇÕES v1.3 — Bloco "Contratos"
+-- Aditivo e idempotente: seguro rodar de novo sobre o banco já em produção.
+-- ============================================================
+
+-- TABELA: contratos (vinculado obrigatoriamente à licitação ganha que o originou)
+create table if not exists public.contratos (
+  id                      bigserial primary key,
+  numero_contrato         text not null,
+  licitacao_id            bigint not null references public.licitacoes(id) on delete cascade,
+  orgao_id                bigint references public.orgaos(id) on delete set null,
+  data_contrato           date,
+  data_assinatura         date,
+  vigencia_inicio         date,
+  vigencia_fim            date,
+  viabilidade             text check (viabilidade in ('Viável', 'Inviável', 'Em análise') or viabilidade is null),
+  arquivo_url             text,
+  prazo_entrega           text,
+  prazo_entrega_uteis     boolean not null default false,
+  prazo_pagamento         text,
+  prazo_pagamento_uteis   boolean not null default false,
+  telefone_contato        text,
+  email_contato           text,
+  situacao                text not null default 'Vigente' check (situacao in ('Vigente', 'Encerrada', 'Cancelada')),
+  observacoes             text,
+  created_at              timestamptz not null default now(),
+  updated_at              timestamptz not null default now()
+);
+
+-- TABELA: contrato_itens (sem controle de saldo/consumo — quantidade e valor fixos)
+create table if not exists public.contrato_itens (
+  id                  bigserial primary key,
+  contrato_id         bigint not null references public.contratos(id) on delete cascade,
+  item_numero         integer not null default 1,
+  produto_id          bigint not null references public.produtos(id) on delete restrict,
+  produto_descricao   text,
+  marca_fabricante    text,
+  modelo_versao       text,
+  unidade             text default '1 UN',
+  quantidade_total    numeric(14,2) not null default 0,
+  valor_unitario      numeric(14,2) not null default 0,
+  created_at          timestamptz not null default now(),
+  updated_at          timestamptz not null default now()
+);
+
+alter table public.contratos      enable row level security;
+alter table public.contrato_itens enable row level security;
+
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['contratos', 'contrato_itens']
+  loop
+    execute format('drop policy if exists "%1$s_select" on public.%1$I;', t);
+    execute format('create policy "%1$s_select" on public.%1$I for select to authenticated using (true);', t);
+
+    execute format('drop policy if exists "%1$s_insert" on public.%1$I;', t);
+    execute format('create policy "%1$s_insert" on public.%1$I for insert to authenticated
+                     with check (public.get_user_role() <> ''consulta'');', t);
+
+    execute format('drop policy if exists "%1$s_update" on public.%1$I;', t);
+    execute format('create policy "%1$s_update" on public.%1$I for update to authenticated
+                     using (public.get_user_role() <> ''consulta'')
+                     with check (public.get_user_role() <> ''consulta'');', t);
+
+    execute format('drop policy if exists "%1$s_delete" on public.%1$I;', t);
+    execute format('create policy "%1$s_delete" on public.%1$I for delete to authenticated
+                     using (public.get_user_role() = ''administrador'');', t);
+
+    execute format('drop trigger if exists set_updated_at on public.%I;', t);
+    execute format('create trigger set_updated_at before update on public.%I
+                     for each row execute function public.set_updated_at();', t);
+  end loop;
+end;
+$$;
+
+-- depois de rodar este bloco, force o PostgREST a recarregar o schema:
+notify pgrst, 'reload schema';
+
+-- ============================================================
 -- TRIGGERS updated_at
 -- ============================================================
 do $$

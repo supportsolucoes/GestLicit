@@ -183,6 +183,53 @@ export async function deleteConsumo(id) {
 }
 
 // ============================================================
+// Contratos
+// ============================================================
+const CONTRATO_SELECT = '*, orgao:orgaos(id,nome), licitacao:licitacoes(id,numero_pregao,numero_processo)';
+
+export async function listContratos() {
+  return handle(sb().from('contratos').select(CONTRATO_SELECT).order('vigencia_fim', { ascending: true }));
+}
+
+export async function getContrato(id) {
+  return handle(sb().from('contratos').select(CONTRATO_SELECT).eq('id', id).single());
+}
+
+export async function createContrato(payload) {
+  return handle(sb().from('contratos').insert(payload).select(CONTRATO_SELECT).single());
+}
+
+export async function updateContrato(id, payload) {
+  return handle(sb().from('contratos').update(payload).eq('id', id).select(CONTRATO_SELECT).single());
+}
+
+export async function deleteContrato(id) {
+  return handle(sb().from('contratos').delete().eq('id', id));
+}
+
+const CONTRATO_ITEM_SELECT = '*, produto:produtos(id,nome,fabricante,preco_custo)';
+
+export async function listContratoItens(contratoId) {
+  return handle(sb().from('contrato_itens').select(CONTRATO_ITEM_SELECT).eq('contrato_id', contratoId).order('item_numero'));
+}
+
+export async function listAllContratoItens() {
+  return handle(sb().from('contrato_itens').select('*'));
+}
+
+export async function createContratoItem(payload) {
+  return handle(sb().from('contrato_itens').insert(payload).select(CONTRATO_ITEM_SELECT).single());
+}
+
+export async function updateContratoItem(id, payload) {
+  return handle(sb().from('contrato_itens').update(payload).eq('id', id).select(CONTRATO_ITEM_SELECT).single());
+}
+
+export async function deleteContratoItem(id) {
+  return handle(sb().from('contrato_itens').delete().eq('id', id));
+}
+
+// ============================================================
 // Documentos (Supabase Storage)
 // ============================================================
 const DOCUMENTOS_BUCKET = 'documentos';
@@ -226,6 +273,14 @@ export async function getSignedUrl(path) {
 export async function uploadCertidaoArquivo(file, certidaoId) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
   const path = `Certidão/${Date.now()}_${safeName}`;
+  const { error } = await sb().storage.from(DOCUMENTOS_BUCKET).upload(path, file);
+  if (error) throw error;
+  return path;
+}
+
+export async function uploadContratoArquivo(file, contratoId) {
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `Contrato/${Date.now()}_${safeName}`;
   const { error } = await sb().storage.from(DOCUMENTOS_BUCKET).upload(path, file);
   if (error) throw error;
   return path;

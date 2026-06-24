@@ -10,6 +10,7 @@ import { showToast, setLoading, closeModal } from './ui.js';
 
 import * as Dashboard from './modules/dashboard.js';
 import * as Licitacoes from './modules/licitacoes.js';
+import * as Contratos from './modules/contratos.js';
 import * as Atas from './modules/atas.js';
 import * as Produtos from './modules/produtos.js';
 import * as Orgaos from './modules/orgaos.js';
@@ -25,6 +26,7 @@ import { alertLevel } from './helpers.js';
 const MODULES = {
   dashboard: Dashboard,
   licitacoes: Licitacoes,
+  contratos: Contratos,
   atas: Atas,
   produtos: Produtos,
   orgaos: Orgaos,
@@ -124,14 +126,19 @@ function renderUserMenu() {
 
 async function refreshNotifications() {
   try {
-    const [atas, certidoes] = await Promise.all([
+    const [atas, contratos, certidoes] = await Promise.all([
       SupabaseService.listAtas(),
+      SupabaseService.listContratos(),
       SupabaseService.Certidoes.list(),
     ]);
     const items = [];
     atas.filter((a) => a.situacao === 'Vigente').forEach((a) => {
       const alert = alertLevel(a.vigencia_fim);
       if (alert) items.push({ titulo: `Ata ${a.numero_ata}`, meta: `${a.orgao?.nome || 'Órgão não informado'} · vence em ${formatDate(a.vigencia_fim)}`, dias: alert.days });
+    });
+    contratos.filter((c) => c.situacao === 'Vigente').forEach((c) => {
+      const alert = alertLevel(c.vigencia_fim);
+      if (alert) items.push({ titulo: `Contrato ${c.numero_contrato}`, meta: `${c.orgao?.nome || 'Órgão não informado'} · vence em ${formatDate(c.vigencia_fim)}`, dias: alert.days });
     });
     certidoes.forEach((c) => {
       const alert = alertLevel(c.data_validade);

@@ -4,6 +4,7 @@ export const ICONS = {
   dashboard: `${ICELL}<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>`,
   licitacoes: `${ICELL}<path d="M9 3h6l1 3H8z"/><rect x="5" y="6" width="14" height="15" rx="1.5"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`,
   atas: `${ICELL}<path d="M7 3h8l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M15 3v4h4"/><path d="M9 13l2 2 4-4"/></svg>`,
+  contratos: `${ICELL}<rect x="4" y="3" width="16" height="18" rx="1.5"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><path d="M8 17c1-1.5 2-1.5 3 0s2 1.5 3 0"/></svg>`,
   produtos: `${ICELL}<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><line x1="12" y1="13" x2="12" y2="21"/></svg>`,
   orgaos: `${ICELL}<line x1="4" y1="21" x2="20" y2="21"/><path d="M5 21V9l7-5 7 5v12"/><line x1="9" y1="21" x2="9" y2="13"/><line x1="15" y1="21" x2="15" y2="13"/></svg>`,
   concorrentes: `${ICELL}<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="8" r="2.6"/><path d="M15.5 14c2.6.3 4.5 2.6 4.5 6"/></svg>`,
@@ -27,6 +28,7 @@ export const ICONS = {
 export const PAGE_META = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
   { id: 'licitacoes', label: 'Licitações', icon: 'licitacoes' },
+  { id: 'contratos', label: 'Contratos', icon: 'contratos' },
   { id: 'atas', label: 'Atas e Empenhos', icon: 'atas' },
   { id: 'produtos', label: 'Produtos', icon: 'produtos' },
   { id: 'orgaos', label: 'Órgãos', icon: 'orgaos' },
@@ -51,7 +53,12 @@ export const STATUS_COLOR = {
   'Vigente': 'success',
   'Encerrada': 'muted',
   'Cancelada': 'danger',
+  'Viável': 'success',
+  'Inviável': 'danger',
+  'Em análise': 'warning',
 };
+
+export const VIABILIDADE_CONTRATO = ['Viável', 'Inviável', 'Em análise'];
 
 export const MODALIDADES = ['Pregão Eletrônico', 'Pregão Presencial', 'Concorrência', 'Concurso', 'Leilão', 'Dispensa', 'Inexigibilidade'];
 

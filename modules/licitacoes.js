@@ -336,10 +336,9 @@ function renderItemsTable() {
               <td><input type="number" min="1" data-field="item_numero" value="${item.item_numero ?? idx + 1}" style="width:54px;" /></td>
               <td>
                 <select data-field="produto_id" style="min-width:150px;">
-                  <option value="">— Outro / não cadastrado —</option>
+                  <option value="">Selecione um produto...</option>
                   ${produtos.map((p) => `<option value="${p.id}" ${String(item.produto_id) === String(p.id) ? 'selected' : ''}>${escapeHtml(p.nome)}</option>`).join('')}
                 </select>
-                <input type="text" data-field="produto_descricao" value="${escapeHtml(item.produto_descricao ?? '')}" style="min-width:150px; margin-top:4px; ${item.produto_id ? 'display:none;' : ''}" placeholder="Descrição/detalhe" />
               </td>
               <td><input type="text" data-field="quantidade" value="${item.quantidade ?? ''}" style="width:70px;" /></td>
               <td><input type="text" data-field="marca_fabricante" value="${escapeHtml(item.marca_fabricante ?? '')}" style="min-width:120px;" /></td>
@@ -380,25 +379,17 @@ function onItemFieldChange(event) {
   item[field] = value;
 
   if (field === 'produto_id') {
-    const descInput = row.querySelector('[data-field="produto_descricao"]');
-    if (value) {
-      const produto = getState().lookups.produtos.find((p) => String(p.id) === String(value));
-      if (produto) {
-        item.produto_descricao = produto.nome;
-        descInput.value = produto.nome;
-        if (!item.marca_fabricante && produto.fabricante) {
-          item.marca_fabricante = produto.fabricante;
-          row.querySelector('[data-field="marca_fabricante"]').value = produto.fabricante;
-        }
-        item.custo_unitario = produto.preco_custo ?? '';
-        row.querySelector('[data-field="custo_unitario"]').value = item.custo_unitario;
-        recalcValorMinimo(item);
-        row.querySelector('[data-field="valor_minimo"]').value = item.valor_minimo ?? '';
+    const produto = getState().lookups.produtos.find((p) => String(p.id) === String(value));
+    item.produto_descricao = produto?.nome || '';
+    if (produto) {
+      if (!item.marca_fabricante && produto.fabricante) {
+        item.marca_fabricante = produto.fabricante;
+        row.querySelector('[data-field="marca_fabricante"]').value = produto.fabricante;
       }
-      descInput.style.display = 'none';
-    } else {
-      descInput.style.display = '';
-      descInput.focus();
+      item.custo_unitario = produto.preco_custo ?? '';
+      row.querySelector('[data-field="custo_unitario"]').value = item.custo_unitario;
+      recalcValorMinimo(item);
+      row.querySelector('[data-field="valor_minimo"]').value = item.valor_minimo ?? '';
     }
   }
 
@@ -454,6 +445,12 @@ async function salvar() {
 
   if (!payload.numero_pregao) {
     showToast('Informe o número do pregão.', 'error');
+    return;
+  }
+
+  const itemSemProduto = editingItems.find((item) => !item.produto_id);
+  if (itemSemProduto) {
+    showToast(`Selecione um produto cadastrado para o item ${itemSemProduto.item_numero}.`, 'error');
     return;
   }
 
