@@ -44,6 +44,11 @@ export function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+export function dateToISO(date) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 export function toDatetimeLocalValue(value) {
   if (!value) return '';
   const d = new Date(value);
@@ -107,6 +112,14 @@ export function calcSaldoAtaItemPorEmpenho(item, empenhoItensDoProduto) {
   const restante = Math.max(total - empenhado, 0);
   const percentual = total > 0 ? Math.min((empenhado / total) * 100, 100) : 0;
   return { empenhado, restante, percentual };
+}
+
+export function calcSaldoEmpenhoItem(item, entregas) {
+  const entregue = sumBy(entregas.filter((e) => e.empenho_item_id === item.id), (e) => e.quantidade);
+  const total = Number(item.quantidade_empenhada) || 0;
+  const restante = Math.max(total - entregue, 0);
+  const percentual = total > 0 ? Math.min((entregue / total) * 100, 100) : 0;
+  return { entregue, restante, percentual };
 }
 
 export function downloadBlob(blob, filename) {

@@ -276,6 +276,23 @@ export async function deleteEmpenhoItem(id) {
   return handle(sb().from('empenho_itens').delete().eq('id', id));
 }
 
+export async function listEntregasByItens(itemIds) {
+  if (!itemIds || !itemIds.length) return [];
+  return handle(sb().from('empenho_entregas').select('*').in('empenho_item_id', itemIds).order('data_entrega'));
+}
+
+export async function listAllEntregas() {
+  return handle(sb().from('empenho_entregas').select('*'));
+}
+
+export async function addEntrega(payload) {
+  return handle(sb().from('empenho_entregas').insert(payload).select().single());
+}
+
+export async function deleteEntrega(id) {
+  return handle(sb().from('empenho_entregas').delete().eq('id', id));
+}
+
 // ============================================================
 // Configurações: app_settings e log de dados de demonstração
 // ============================================================

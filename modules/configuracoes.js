@@ -1,25 +1,17 @@
 import * as Service from '../supabase-service.js';
-import { refreshLookups, currentUser, getState } from '../state.js';
+import { refreshLookups, currentUser, getState, canWrite, isAdmin } from '../state.js';
 import { byId, escapeHtml, todayISO } from '../helpers.js';
-import { openModal, closeModal, showToast, confirmDialog, badge, renderEmptyState } from '../ui.js';
-import { ROLES, ICONS } from '../constants.js';
-
-let cache = [];
+import { showToast, confirmDialog, badge, renderEmptyState } from '../ui.js';
+import { ICONS } from '../constants.js';
 
 export async function render(container) {
   container.innerHTML = `
     <div class="page-header">
       <div>
         <h1>Configurações</h1>
-        <p>Usuários, integrações e dados de demonstração.</p>
+        <p>Integrações e dados de demonstração.</p>
       </div>
     </div>
-
-    <div class="card" style="margin-bottom:16px; font-size:13px; color:var(--gray-500);">
-      Novos usuários se cadastram pela tela de login ("Criar conta") e recebem o perfil <strong>Consulta</strong> até serem promovidos aqui.
-    </div>
-
-    <div class="card table-wrap" style="margin-bottom:16px;"><div id="config-table"></div></div>
 
     <div class="card" style="margin-bottom:16px;">
       <strong>Integrações</strong>
@@ -30,11 +22,13 @@ export async function render(container) {
       <div class="form-grid cols-3">
         <div class="form-field span-2">
           <label>Chave da API (Portal da Transparência)</label>
-          <input type="text" id="f-portal-transparencia-key" value="${escapeHtml(getState().lookups.settings?.portal_transparencia_api_key || '')}" placeholder="Cole aqui a chave recebida por e-mail" />
+          <input type="text" id="f-portal-transparencia-key" ${canWrite() ? '' : 'disabled'} value="${escapeHtml(getState().lookups.settings?.portal_transparencia_api_key || '')}" placeholder="Cole aqui a chave recebida por e-mail" />
         </div>
-        <div class="form-field" style="justify-content:flex-end;">
-          <button type="button" class="btn btn-primary" data-action="configuracoes.salvarChave" style="height:38px;">Salvar chave</button>
-        </div>
+        ${canWrite() ? `
+          <div class="form-field" style="justify-content:flex-end;">
+            <button type="button" class="btn btn-primary" data-action="configuracoes.salvarChave" style="height:38px;">Salvar chave</button>
+          </div>
+        ` : ''}
       </div>
     </div>
 
@@ -48,83 +42,13 @@ export async function render(container) {
     </div>
   `;
 
-  byId('f-portal-transparencia-key').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') salvarChave();
-  });
-
-  await reload().catch((err) => showToast(err.message || 'Erro ao carregar usuários.', 'error'));
-  await renderDemoStatus();
-}
-
-async function reload() {
-  cache = await Service.Profiles.list();
-  renderTable();
-}
-
-function renderTable() {
-  const wrap = byId('config-table');
-  if (!cache.length) {
-    wrap.innerHTML = renderEmptyState('Nenhum usuário cadastrado ainda.');
-    return;
-  }
-  wrap.innerHTML = `
-    <table class="data-table">
-      <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Status</th><th></th></tr></thead>
-      <tbody>
-        ${cache.map((p) => `
-          <tr>
-            <td>${escapeHtml(p.nome)}${p.id === currentUser()?.id ? ' <span style="color:var(--gray-500); font-size:12px;">(você)</span>' : ''}</td>
-            <td>${escapeHtml(p.email)}</td>
-            <td>${badge(ROLES.find((r) => r.id === p.role)?.label || p.role, 'info')}</td>
-            <td>${p.ativo ? badge('Ativo', 'success') : badge('Inativo', 'muted')}</td>
-            <td class="row-actions">
-              <button class="icon-btn" data-action="configuracoes.editar" data-id="${p.id}" title="Editar">${ICONS.edit}</button>
-            </td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
-}
-
-function abrirFormulario(id) {
-  const profile = cache.find((p) => p.id === id);
-  if (!profile) return;
-  const bodyHtml = `
-    <div class="form-grid">
-      <div class="form-field span-2"><label>Nome</label><input id="f-cfg-nome" value="${escapeHtml(profile.nome || '')}" /></div>
-      <div class="form-field"><label>Perfil de acesso</label>
-        <select id="f-cfg-role">${ROLES.map((r) => `<option value="${r.id}" ${r.id === profile.role ? 'selected' : ''}>${r.label}</option>`).join('')}</select>
-      </div>
-      <div class="form-field"><label>Status</label>
-        <select id="f-cfg-ativo"><option value="true" ${profile.ativo ? 'selected' : ''}>Ativo</option><option value="false" ${!profile.ativo ? 'selected' : ''}>Inativo</option></select>
-      </div>
-    </div>
-  `;
-  openModal('Editar usuário', bodyHtml, {
-    size: 'sm',
-    footerHtml: `
-      <button type="button" class="btn btn-ghost" data-action="modal.close">Cancelar</button>
-      <button type="button" class="btn btn-primary" data-action="configuracoes.salvar" data-id="${id}">Salvar</button>
-    `,
-  });
-}
-
-async function salvar(target) {
-  const id = target.dataset.id;
-  try {
-    await Service.Profiles.update(id, {
-      nome: byId('f-cfg-nome').value.trim(),
-      role: byId('f-cfg-role').value,
-      ativo: byId('f-cfg-ativo').value === 'true',
+  if (canWrite()) {
+    byId('f-portal-transparencia-key').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') salvarChave();
     });
-    showToast('Usuário atualizado.', 'success');
-    closeModal();
-    await reload();
-    await refreshLookups();
-  } catch (err) {
-    showToast(err.message || 'Erro ao atualizar usuário.', 'error');
   }
+
+  await renderDemoStatus();
 }
 
 async function salvarChave() {
@@ -148,6 +72,10 @@ async function renderDemoStatus() {
     log = await Service.listDemoSeedLog();
   } catch (err) {
     wrap.innerHTML = `<p style="color:var(--danger); font-size:13px;">Não foi possível carregar o status dos dados de demonstração (${escapeHtml(err.message || String(err))}). Confirme que a migração "ALTERAÇÕES v1.7" do <code>supabase/schema.sql</code> foi aplicada no banco.</p>`;
+    return;
+  }
+  if (!isAdmin()) {
+    wrap.innerHTML = `<p style="color:var(--gray-500); font-size:13px;">Disponível apenas para administradores (a remoção depende de excluir registros que só administrador pode excluir).</p>`;
     return;
   }
   if (log.length) {
@@ -303,8 +231,6 @@ async function removerDemo() {
 }
 
 export const actions = {
-  'configuracoes.editar': (target) => abrirFormulario(target.dataset.id),
-  'configuracoes.salvar': (target) => salvar(target),
   'configuracoes.salvarChave': () => salvarChave(),
   'configuracoes.criarDemo': () => criarDemo(),
   'configuracoes.removerDemo': () => removerDemo(),

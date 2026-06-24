@@ -24,6 +24,7 @@ export const ICONS = {
   edit: `${ICELL}<path d="M4 16.5V20h3.5L19 8.5l-3.5-3.5z"/></svg>`,
   download: `${ICELL}<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><line x1="4.5" y1="20" x2="19.5" y2="20"/></svg>`,
   logout: `${ICELL}<path d="M9 20H5.5A1.5 1.5 0 0 1 4 18.5v-13A1.5 1.5 0 0 1 5.5 4H9"/><path d="M15 16l4.5-4-4.5-4"/><line x1="19.5" y1="12" x2="9" y2="12"/></svg>`,
+  usuarios: `${ICELL}<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-4 3.5-6 7-6s7 2 7 6"/></svg>`,
 };
 
 export const PAGE_META = [
@@ -40,7 +41,8 @@ export const PAGE_META = [
   { id: 'documentos', label: 'Documentos', icon: 'documentos' },
   { id: 'agenda', label: 'Agenda', icon: 'agenda' },
   { id: 'relatorios', label: 'Relatórios', icon: 'relatorios' },
-  { id: 'configuracoes', label: 'Configurações', icon: 'configuracoes', adminOnly: true },
+  { id: 'configuracoes', label: 'Configurações', icon: 'configuracoes' },
+  { id: 'usuarios', label: 'Usuários', icon: 'usuarios', adminOnly: true },
 ];
 
 export const STATUS_LICITACAO = ['Em disputa', 'Ganhou', 'Declinou', 'Desclassificado', 'Fracassado', 'Revogado'];

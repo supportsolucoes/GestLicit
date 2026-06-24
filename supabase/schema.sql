@@ -589,6 +589,54 @@ create policy "demo_seed_log_delete" on public.demo_seed_log for delete to authe
 notify pgrst, 'reload schema';
 
 -- ============================================================
+-- ALTERAÇÕES v1.8 — Bloco "Entregas do Empenho" + ajuste de acesso a Configurações
+-- Aditivo e idempotente: seguro rodar de novo sobre o banco já em produção.
+-- Próxima etapa do fluxo Ata/Contrato → Empenho → Entregas → Faturamento →
+-- Recebimentos. Saldo do item do empenho = quantidade_empenhada menos a soma
+-- das entregas já lançadas (nunca armazenado, sempre calculado).
+-- ============================================================
+
+-- A página Configurações deixou de ser só-administrador (Usuários virou página
+-- própria, admin-only). A chave de API (app_settings) agora pode ser definida
+-- por qualquer perfil que não seja "consulta" — mesma regra das demais tabelas
+-- operacionais. "Dados de demonstração" continua admin-only (a remoção depende
+-- de excluir licitações/contratos/atas/empenhos, e isso é admin-only em todo o
+-- sistema), então demo_seed_log não muda.
+drop policy if exists "app_settings_upsert" on public.app_settings;
+create policy "app_settings_upsert" on public.app_settings for insert to authenticated
+  with check (public.get_user_role() <> 'consulta');
+
+drop policy if exists "app_settings_update" on public.app_settings;
+create policy "app_settings_update" on public.app_settings for update to authenticated
+  using (public.get_user_role() <> 'consulta')
+  with check (public.get_user_role() <> 'consulta');
+
+create table if not exists public.empenho_entregas (
+  id                  bigserial primary key,
+  empenho_item_id     bigint not null references public.empenho_itens(id) on delete cascade,
+  data_entrega        date not null default current_date,
+  quantidade          numeric(14,2) not null default 0,
+  numero_nota_fiscal  text,
+  observacao          text,
+  created_at          timestamptz not null default now()
+);
+
+alter table public.empenho_entregas enable row level security;
+
+drop policy if exists "empenho_entregas_select" on public.empenho_entregas;
+create policy "empenho_entregas_select" on public.empenho_entregas for select to authenticated using (true);
+
+drop policy if exists "empenho_entregas_insert" on public.empenho_entregas;
+create policy "empenho_entregas_insert" on public.empenho_entregas for insert to authenticated
+  with check (public.get_user_role() <> 'consulta');
+
+drop policy if exists "empenho_entregas_delete" on public.empenho_entregas;
+create policy "empenho_entregas_delete" on public.empenho_entregas for delete to authenticated
+  using (public.get_user_role() <> 'consulta');
+
+notify pgrst, 'reload schema';
+
+-- ============================================================
 -- TRIGGERS updated_at
 -- ============================================================
 do $$

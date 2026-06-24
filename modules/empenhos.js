@@ -1,6 +1,6 @@
 import * as Service from '../supabase-service.js';
 import { getState, canWrite, isAdmin } from '../state.js';
-import { byId, escapeHtml, formatDate, formatCurrency, parseNumber, sumBy } from '../helpers.js';
+import { byId, escapeHtml, formatDate, formatCurrency, parseNumber, sumBy, todayISO, calcSaldoEmpenhoItem } from '../helpers.js';
 import { openModal, closeModal, confirmDialog, showToast, badge, renderEmptyState } from '../ui.js';
 import { SITUACOES_EMPENHO, STATUS_COLOR, ICONS } from '../constants.js';
 
@@ -10,6 +10,9 @@ let contratosLite = [];
 let editingItems = [];
 let originalItemIds = new Set();
 let editingEmpenhoId = null;
+let itensByEmpenho = new Map();
+let entregasByItemId = new Map();
+let expandedEntregaItemId = null;
 
 export async function render(container) {
   container.innerHTML = `
@@ -26,7 +29,25 @@ export async function render(container) {
 }
 
 async function reload() {
-  cache = await Service.listEmpenhos();
+  const [empenhos, allItens, allEntregas] = await Promise.all([
+    Service.listEmpenhos(), Service.listAllEmpenhoItens(), Service.listAllEntregas(),
+  ]);
+  cache = empenhos;
+
+  itensByEmpenho = new Map();
+  for (const item of allItens) {
+    const arr = itensByEmpenho.get(item.empenho_id) || [];
+    arr.push(item);
+    itensByEmpenho.set(item.empenho_id, arr);
+  }
+
+  entregasByItemId = new Map();
+  for (const ent of allEntregas) {
+    const arr = entregasByItemId.get(ent.empenho_item_id) || [];
+    arr.push(ent);
+    entregasByItemId.set(ent.empenho_item_id, arr);
+  }
+
   renderTable();
 }
 
@@ -34,6 +55,14 @@ function origemLabel(e) {
   if (e.ata?.numero_ata) return `Ata ${e.ata.numero_ata}`;
   if (e.contrato?.numero_contrato) return `Contrato ${e.contrato.numero_contrato}`;
   return 'Direto (sem vínculo)';
+}
+
+function saldoEmpenho(empenhoId) {
+  const itens = itensByEmpenho.get(empenhoId) || [];
+  const totalEmpenhado = sumBy(itens, (i) => i.quantidade_empenhada);
+  const totalEntregue = sumBy(itens, (i) => calcSaldoEmpenhoItem(i, entregasByItemId.get(i.id) || []).entregue);
+  const percentual = totalEmpenhado > 0 ? Math.min((totalEntregue / totalEmpenhado) * 100, 100) : 0;
+  return { totalEmpenhado, totalEntregue, percentual };
 }
 
 function renderTable() {
@@ -44,9 +73,11 @@ function renderTable() {
   }
   wrap.innerHTML = `
     <table class="data-table">
-      <thead><tr><th>Nº Empenho</th><th>Origem</th><th>Órgão</th><th>Data</th><th>Situação</th><th>Valor Empenhado</th><th></th></tr></thead>
+      <thead><tr><th>Nº Empenho</th><th>Origem</th><th>Órgão</th><th>Data</th><th>Situação</th><th>Valor Empenhado</th><th>% Entregue</th><th></th></tr></thead>
       <tbody>
-        ${cache.map((e) => `
+        ${cache.map((e) => {
+          const saldo = saldoEmpenho(e.id);
+          return `
           <tr>
             <td><strong>${escapeHtml(e.numero_empenho)}</strong></td>
             <td>${escapeHtml(origemLabel(e))}</td>
@@ -54,12 +85,13 @@ function renderTable() {
             <td>${formatDate(e.data_empenho)}</td>
             <td>${badge(e.situacao, STATUS_COLOR[e.situacao] || 'muted')}</td>
             <td>${formatCurrency(e.valor_empenhado)}</td>
+            <td>${saldo.totalEmpenhado > 0 ? `${saldo.percentual.toFixed(0)}% <span style="color:var(--gray-500); font-size:11.5px;">(${saldo.totalEntregue}/${saldo.totalEmpenhado})</span>` : '-'}</td>
             <td class="row-actions">
               <button class="icon-btn" data-action="empenhos.editar" data-id="${e.id}" title="Editar">${ICONS.edit}</button>
               ${isAdmin() ? `<button class="icon-btn" data-action="empenhos.excluir" data-id="${e.id}" title="Excluir">${ICONS.trash}</button>` : ''}
             </td>
-          </tr>
-        `).join('')}
+          </tr>`;
+        }).join('')}
       </tbody>
     </table>
   `;
@@ -77,11 +109,21 @@ async function abrirFormulario(empenhoId) {
   if (!atasLite.length) atasLite = await Service.listAtas();
   if (!contratosLite.length) contratosLite = await Service.listContratos();
 
+  expandedEntregaItemId = null;
+
   if (empenhoId) {
     empenho = cache.find((e) => e.id === empenhoId) || await Service.getEmpenho(empenhoId);
     const itens = await Service.listEmpenhoItens(empenhoId);
     editingItems = itens.map((it) => ({ ...it }));
     originalItemIds = new Set(itens.map((it) => it.id));
+
+    const entregas = await Service.listEntregasByItens(itens.map((it) => it.id));
+    entregasByItemId = new Map();
+    for (const ent of entregas) {
+      const arr = entregasByItemId.get(ent.empenho_item_id) || [];
+      arr.push(ent);
+      entregasByItemId.set(ent.empenho_item_id, arr);
+    }
   }
 
   const atasOptions = atasLite
@@ -122,6 +164,14 @@ async function abrirFormulario(empenhoId) {
         </div>
         <div id="empenho-itens-table"></div>
       </div>
+
+      ${empenhoId ? `
+        <div class="card items-table-card">
+          <strong>Saldo e entregas</strong>
+          <p style="color:var(--gray-500); font-size:12px; margin:4px 0 10px;">Quanto já foi entregue de cada item empenhado, e o saldo restante a entregar.</p>
+          <div id="empenho-entregas-section"></div>
+        </div>
+      ` : ''}
     </form>
   `;
 
@@ -137,6 +187,7 @@ async function abrirFormulario(empenhoId) {
   byId('f-contrato-id').addEventListener('change', () => onVinculoChange('contrato'));
 
   renderItemsTable();
+  if (empenhoId) renderEntregasSection();
 }
 
 function onVinculoChange(origem) {
@@ -283,6 +334,122 @@ async function carregarItensVinculo() {
   showToast(adicionados ? `${adicionados} item(ns) carregado(s).` : 'Nenhum item novo para carregar.', adicionados ? 'success' : 'error');
 }
 
+function renderEntregasSection() {
+  const wrap = byId('empenho-entregas-section');
+  if (!wrap) return;
+  const itensSalvos = editingItems.filter((i) => i.id);
+
+  if (!itensSalvos.length) {
+    wrap.innerHTML = renderEmptyState('Salve o empenho com pelo menos um item para registrar entregas.');
+    return;
+  }
+
+  wrap.innerHTML = itensSalvos.map((item) => {
+    const entregas = entregasByItemId.get(item.id) || [];
+    const saldo = calcSaldoEmpenhoItem(item, entregas);
+    const expanded = expandedEntregaItemId === item.id;
+    return `
+      <div class="card" style="margin-bottom:12px; box-shadow:none; border:1px solid var(--gray-200);">
+        <div style="display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; align-items:center;">
+          <div style="min-width:200px;">
+            <strong>${escapeHtml(item.produto_descricao || '-')}</strong>
+          </div>
+          <div style="flex:1; min-width:200px;">
+            <div class="progress-track"><div class="progress-fill" style="width:${saldo.percentual}%;"></div></div>
+            <div style="font-size:12px; color:var(--gray-500); margin-top:4px;">
+              Entregue ${saldo.entregue} de ${item.quantidade_empenhada} (${saldo.percentual.toFixed(0)}%) · Saldo restante ${saldo.restante}
+            </div>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-action="empenhos.toggleEntregas" data-item-id="${item.id}">${expanded ? 'Ocultar' : 'Entregas'} (${entregas.length})</button>
+        </div>
+        ${expanded ? renderEntregaPanel(item, entregas) : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderEntregaPanel(item, entregas) {
+  return `
+    <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--gray-200);">
+      ${entregas.length ? `
+        <table class="data-table" style="margin-bottom:12px;">
+          <thead><tr><th>Data</th><th>Quantidade</th><th>Nota Fiscal</th><th>Observação</th><th></th></tr></thead>
+          <tbody>
+            ${entregas.map((e) => `
+              <tr>
+                <td>${formatDate(e.data_entrega)}</td>
+                <td>${e.quantidade}</td>
+                <td>${escapeHtml(e.numero_nota_fiscal || '-')}</td>
+                <td>${escapeHtml(e.observacao || '-')}</td>
+                <td class="row-actions">${canWrite() ? `<button type="button" class="icon-btn" data-action="empenhos.excluirEntrega" data-entrega-id="${e.id}" data-item-id="${item.id}">${ICONS.trash}</button>` : ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>` : renderEmptyState('Nenhuma entrega lançada ainda.')}
+
+      ${canWrite() ? `
+        <div class="form-grid cols-3" style="align-items:end;">
+          <div class="form-field"><label>Data da entrega</label><input type="date" id="nova-entrega-data-${item.id}" value="${todayISO()}" /></div>
+          <div class="form-field"><label>Quantidade</label><input type="text" id="nova-entrega-qtd-${item.id}" placeholder="0" /></div>
+          <div class="form-field"><label>Nota Fiscal</label><input type="text" id="nova-entrega-nf-${item.id}" /></div>
+          <div class="form-field span-2"><label>Observação</label><input type="text" id="nova-entrega-obs-${item.id}" /></div>
+          <div class="form-field"><button type="button" class="btn btn-primary" data-action="empenhos.addEntrega" data-item-id="${item.id}">${ICONS.plus} Lançar</button></div>
+        </div>` : ''}
+    </div>
+  `;
+}
+
+function toggleEntregas(target) {
+  const itemId = Number(target.dataset.itemId);
+  expandedEntregaItemId = expandedEntregaItemId === itemId ? null : itemId;
+  renderEntregasSection();
+}
+
+async function addEntregaHandler(target) {
+  const itemId = Number(target.dataset.itemId);
+  const quantidade = parseNumber(byId(`nova-entrega-qtd-${itemId}`).value);
+  if (!quantidade) {
+    showToast('Informe a quantidade entregue.', 'error');
+    return;
+  }
+  try {
+    await Service.addEntrega({
+      empenho_item_id: itemId,
+      data_entrega: byId(`nova-entrega-data-${itemId}`).value || todayISO(),
+      quantidade,
+      numero_nota_fiscal: byId(`nova-entrega-nf-${itemId}`).value.trim() || null,
+      observacao: byId(`nova-entrega-obs-${itemId}`).value.trim() || null,
+    });
+    showToast('Entrega lançada.', 'success');
+    const entregas = await Service.listEntregasByItens(editingItems.filter((i) => i.id).map((i) => i.id));
+    entregasByItemId = new Map();
+    for (const ent of entregas) {
+      const arr = entregasByItemId.get(ent.empenho_item_id) || [];
+      arr.push(ent);
+      entregasByItemId.set(ent.empenho_item_id, arr);
+    }
+    expandedEntregaItemId = itemId;
+    renderEntregasSection();
+  } catch (err) {
+    showToast(err.message || 'Erro ao lançar entrega.', 'error');
+  }
+}
+
+async function excluirEntregaHandler(target) {
+  const ok = await confirmDialog('Remover esta entrega?');
+  if (!ok) return;
+  const itemId = Number(target.dataset.itemId);
+  try {
+    await Service.deleteEntrega(Number(target.dataset.entregaId));
+    const arr = (entregasByItemId.get(itemId) || []).filter((e) => e.id !== Number(target.dataset.entregaId));
+    entregasByItemId.set(itemId, arr);
+    expandedEntregaItemId = itemId;
+    renderEntregasSection();
+  } catch (err) {
+    showToast(err.message || 'Erro ao remover entrega.', 'error');
+  }
+}
+
 async function salvar() {
   const payload = {
     numero_empenho: byId('f-numero-empenho').value.trim(),
@@ -367,5 +534,8 @@ export const actions = {
   'empenhos.addItem': () => addItem(),
   'empenhos.removerItem': (target) => removerItem(target),
   'empenhos.carregarItensVinculo': () => carregarItensVinculo(),
+  'empenhos.toggleEntregas': (target) => toggleEntregas(target),
+  'empenhos.addEntrega': (target) => addEntregaHandler(target),
+  'empenhos.excluirEntrega': (target) => excluirEntregaHandler(target),
   'empenhos.salvar': () => salvar(),
 };

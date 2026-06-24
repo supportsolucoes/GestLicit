@@ -22,6 +22,7 @@ import * as Documentos from './modules/documentos.js';
 import * as Agenda from './modules/agenda.js';
 import * as Relatorios from './modules/relatorios.js';
 import * as Configuracoes from './modules/configuracoes.js';
+import * as Usuarios from './modules/usuarios.js';
 import { alertLevel } from './helpers.js';
 
 const MODULES = {
@@ -39,6 +40,7 @@ const MODULES = {
   agenda: Agenda,
   relatorios: Relatorios,
   configuracoes: Configuracoes,
+  usuarios: Usuarios,
 };
 
 let actionsMap = {};
@@ -128,10 +130,11 @@ function renderUserMenu() {
 
 async function refreshNotifications() {
   try {
-    const [atas, contratos, certidoes] = await Promise.all([
+    const [atas, contratos, certidoes, eventos] = await Promise.all([
       SupabaseService.listAtas(),
       SupabaseService.listContratos(),
       SupabaseService.Certidoes.list(),
+      SupabaseService.AgendaEventos.list(),
     ]);
     const items = [];
     atas.filter((a) => a.situacao === 'Vigente').forEach((a) => {
@@ -146,11 +149,15 @@ async function refreshNotifications() {
       const alert = alertLevel(c.data_validade);
       if (alert) items.push({ titulo: `Certidão ${c.tipo}`, meta: `vence em ${formatDate(c.data_validade)}`, dias: alert.days });
     });
+    eventos.filter((e) => e.lembrete).forEach((e) => {
+      const alert = alertLevel(e.data);
+      if (alert) items.push({ titulo: e.titulo, meta: `${e.tipo} · ${alert.level === 'vencido' ? 'já passou' : formatDate(e.data)}`, dias: alert.days });
+    });
     items.sort((a, b) => a.dias - b.dias);
 
     byId('notif-dot').classList.toggle('hidden', items.length === 0);
     byId('notifications-dropdown').innerHTML = `
-      <div class="dropdown-header">Alertas de vencimento</div>
+      <div class="dropdown-header">Alertas e lembretes</div>
       <div class="dropdown-list">
         ${items.length
           ? items.map((i) => `
@@ -158,7 +165,7 @@ async function refreshNotifications() {
               <span class="dropdown-item-title">${i.titulo}</span>
               <span class="dropdown-item-meta">${i.meta}</span>
             </div>`).join('')
-          : '<div class="dropdown-item"><span class="dropdown-item-meta">Nenhum vencimento próximo.</span></div>'}
+          : '<div class="dropdown-item"><span class="dropdown-item-meta">Nenhum vencimento ou lembrete próximo.</span></div>'}
       </div>
     `;
   } catch (err) {
