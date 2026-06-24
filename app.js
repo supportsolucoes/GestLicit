@@ -44,7 +44,6 @@ const MODULES = {
 };
 
 let actionsMap = {};
-let authMode = 'signin';
 
 function collectActions() {
   actionsMap = {};
@@ -176,15 +175,6 @@ async function refreshNotifications() {
 // ---------------------------------------------------------------
 // Autenticação
 // ---------------------------------------------------------------
-function setAuthMode(mode) {
-  authMode = mode;
-  const isSignup = mode === 'signup';
-  byId('login-nome-field').classList.toggle('hidden', !isSignup);
-  byId('login-submit').textContent = isSignup ? 'Criar conta' : 'Entrar';
-  byId('login-toggle-text').textContent = isSignup ? 'Já tem uma conta?' : 'Ainda não tem conta?';
-  byId('login-toggle-btn').textContent = isSignup ? 'Entrar' : 'Criar conta';
-}
-
 function showLoginError(message) {
   const el = byId('login-error');
   el.textContent = message;
@@ -196,16 +186,9 @@ async function handleLoginSubmit(event) {
   byId('login-error').classList.add('hidden');
   const email = byId('login-email').value.trim();
   const password = byId('login-password').value;
-  const nome = byId('login-nome').value.trim();
   setLoading(true);
   try {
-    if (authMode === 'signup') {
-      await SupabaseService.signUp(email, password, nome || email);
-      showToast('Conta criada. Faça login para continuar.', 'success');
-      setAuthMode('signin');
-    } else {
-      await SupabaseService.signIn(email, password);
-    }
+    await SupabaseService.signIn(email, password);
   } catch (err) {
     showLoginError(err.message || 'Não foi possível autenticar.');
   } finally {
@@ -271,7 +254,6 @@ function bindGlobalEvents() {
     if (action === 'ui.toggleMobileSidebar') { byId('sidebar').classList.toggle('mobile-open'); return; }
     if (action === 'ui.toggleNotifications') { toggleDropdown('notifications-dropdown'); return; }
     if (action === 'ui.toggleUserMenu') { renderUserMenu(); toggleDropdown('user-menu-dropdown'); return; }
-    if (action === 'auth.toggleMode') { setAuthMode(authMode === 'signin' ? 'signup' : 'signin'); return; }
     if (action === 'auth.logout') { await SupabaseService.signOut(); return; }
     if (action === 'modal.close' || action === 'modal.cancel') { closeModal(); return; }
     if (action === 'modal.backdrop') { return; }

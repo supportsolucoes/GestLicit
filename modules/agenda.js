@@ -56,11 +56,7 @@ export async function render(container) {
 
 function renderShell() {
   pageContainer.innerHTML = `
-    <div class="page-header">
-      <div>
-        <h1>Agenda</h1>
-        <p>Sessões públicas, prazos de recurso e vencimentos.</p>
-      </div>
+    <div class="agenda-toolbar">
       <div class="view-toggle">
         ${[['lista', 'Lista'], ['mes', 'Mês'], ['semana', 'Semana'], ['dia', 'Dia']].map(([v, label]) => `
           <button type="button" class="view-toggle-btn ${viewMode === v ? 'active' : ''}" data-action="agenda.setView" data-view="${v}">${label}</button>
@@ -78,11 +74,20 @@ async function renderBody() {
     await crudMod.render(body);
     return;
   }
-  body.innerHTML = renderEmptyState('Carregando agenda...');
+  body.innerHTML = `
+    <div class="page-header">
+      <div>
+        <h1>Agenda</h1>
+        <p>Sessões públicas, prazos de recurso e vencimentos.</p>
+      </div>
+    </div>
+    <div id="agenda-calendar">${renderEmptyState('Carregando agenda...')}</div>
+  `;
   await reloadEventos();
-  if (viewMode === 'mes') renderMes(body);
-  else if (viewMode === 'semana') renderSemana(body);
-  else renderDia(body);
+  const calendarContainer = byId('agenda-calendar');
+  if (viewMode === 'mes') renderMes(calendarContainer);
+  else if (viewMode === 'semana') renderSemana(calendarContainer);
+  else renderDia(calendarContainer);
 }
 
 async function reloadEventos() {

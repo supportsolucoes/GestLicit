@@ -19,12 +19,13 @@ Sem bundler nem transpilador — qualquer mudança em `.js`/`.html`/`.css` é re
 1. Crie um projeto em supabase.com.
 2. No SQL Editor, execute todo o conteúdo de `supabase/schema.sql` (cria tabelas, RLS, bucket de Storage `documentos` e suas policies).
 3. Em **Project Settings → API**, copie a `URL` e a `anon key` para `config.js`.
-4. Crie o primeiro usuário pela própria tela de login do app ("Criar conta"). Ele nasce com perfil `consulta`.
-5. No SQL Editor, promova esse usuário a administrador:
+4. **Desative o autocadastro público** em **Authentication → Sign In / Providers → Email** (toggle "Allow new users to sign up" desligado). O app não tem mais tela de "Criar conta" (removida por decisão de segurança em 2026-06-24 — era possível qualquer pessoa criar uma conta sozinha) — mas a API de signup do Supabase continua existindo por trás, então é esse toggle no dashboard, e não o código do app, que efetivamente bloqueia cadastro não autorizado.
+5. Crie o primeiro usuário em **Authentication → Users → Add user** (e-mail + senha, ou enviar convite). Ele nasce com perfil `consulta` (trigger `handle_new_user`).
+6. No SQL Editor, promova esse usuário a administrador:
    ```sql
    select public.promover_administrador('UUID-DO-USUARIO');
    ```
-   O UUID é visto em **Authentication → Users**. A partir daí, esse usuário pode promover os demais pela tela **Configurações** do app.
+   O UUID é visto em **Authentication → Users**. A partir daí, esse usuário pode promover os demais pela página **Usuários** do app — mas todo usuário novo ainda precisa ser criado primeiro em **Authentication → Users** por um administrador (não existe mais autocadastro).
 
 ## Arquitetura
 
@@ -159,6 +160,14 @@ Bloco 9 — **Agenda em calendário (Mês/Semana/Dia) + correção de notificaç
 - **Bug real encontrado e corrigido nessa mesma leva** (usuário mandou screenshot): o sininho de notificações (`app.js#refreshNotifications`) nunca verificava `agenda_eventos` — só vencimentos de Atas/Contratos/Certidões. Um lembrete de Agenda com `lembrete=true` pra hoje não aparecia no sininho. Corrigido somando `agenda_eventos` (filtrado por `lembrete=true`) à mesma lista, reaproveitando `alertLevel()`.
 - Novo helper `dateToISO(date)` em `helpers.js` (converte um `Date` arbitrário pra string `YYYY-MM-DD`, complementa o `todayISO()` que só serve pra hoje).
 - Validado com harness isolado (Lista/Mês/Semana/Dia, navegação, clique em evento de vencimento e em evento próprio) — todas as visões renderizaram corretamente com dados mistos das 4 fontes.
+- **Bug pós-entrega corrigido**: a visão Lista duplicava o cabeçalho "Agenda" (um do `renderShell()` novo, outro do `buildCrudModule` já existente, ambos renderizados ao mesmo tempo). Corrigido: o alternador Lista/Mês/Semana/Dia agora é uma barra fina separada (`.agenda-toolbar`) acima do conteúdo, e cada visão (Lista via `crudMod.render`, ou Mês/Semana/Dia com `<h1>` próprio) é responsável pelo seu único cabeçalho.
+
+Bloco 10 — **Remoção do autocadastro público** — usuário identificou um problema de segurança real: a tela de login tinha um link "Criar conta" que permitia qualquer pessoa se cadastrar (nascendo com perfil `consulta`, que já tem acesso de leitura a todos os dados via RLS). Removido:
+- `index.html`: removido o campo de nome e o link "Criar conta"; adicionado texto explicando que novas contas são criadas por um administrador.
+- `app.js`: removida toda a lógica de alternância signin/signup (`setAuthMode`, `authMode`, branch de signup em `handleLoginSubmit`, action `auth.toggleMode`).
+- `supabase-service.js`: removida a função `signUp` (sem mais nenhum chamador).
+- **A correção de verdade não é no código, é no painel do Supabase**: o app não tendo mais o botão não impede alguém de chamar a API de signup direto. O bloqueio real precisa ser feito em **Authentication → Sign In/Providers → Email → desativar "Allow new users to sign up"** no painel do Supabase — isso só o usuário pode fazer (é configuração da conta dele, não código).
+- Novo fluxo de onboarding documentado em CLAUDE.md: administrador cria o usuário em **Authentication → Users → Add user** no Supabase, depois promove o perfil pela página **Usuários** do app.
 
 ## Pendências conhecidas (próximos passos sugeridos)
 

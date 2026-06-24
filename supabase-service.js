@@ -15,10 +15,6 @@ export async function signIn(email, password) {
   return handle(sb().auth.signInWithPassword({ email, password }));
 }
 
-export async function signUp(email, password, nome) {
-  return handle(sb().auth.signUp({ email, password, options: { data: { nome } } }));
-}
-
 export async function signOut() {
   await sb().auth.signOut();
 }
