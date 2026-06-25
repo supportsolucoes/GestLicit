@@ -192,7 +192,7 @@ async function refreshNotifications() {
       if (alert) items.push({ tipo: 'agenda', registroId: e.id, dataRef: e.data, titulo: e.titulo, meta: `${e.tipo} · ${alert.level === 'vencido' ? 'já passou' : formatDate(e.data)}`, dias: alert.days, vencido: alert.level === 'vencido' });
     });
 
-    const visiveis = items.filter((i) => i.vencido || !lidasSet.has(notifKey(i.tipo, i.registroId, i.dataRef)));
+    const visiveis = items.filter((i) => !lidasSet.has(notifKey(i.tipo, i.registroId, i.dataRef)));
     visiveis.sort((a, b) => a.dias - b.dias);
 
     byId('notif-dot').classList.toggle('hidden', visiveis.length === 0);
