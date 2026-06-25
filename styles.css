@@ -297,11 +297,13 @@ a { color: var(--blue); text-decoration: none; }
 /* ---------- Page header ---------- */
 .page-header {
   display: flex; align-items: center; justify-content: space-between;
-  flex-wrap: wrap; gap: 10px; margin-bottom: 16px;
+  flex-wrap: wrap; gap: 10px;
+  margin-bottom: 20px; padding-bottom: 16px;
+  border-bottom: 1px solid var(--gray-200);
 }
 
-.page-header h1 { font-size: 20px; font-weight: 700; color: var(--gray-900); margin: 0; }
-.page-header p { margin: 3px 0 0; color: var(--gray-500); font-size: 13px; }
+.page-header h1 { font-size: 22px; font-weight: 700; color: var(--gray-900); margin: 0; }
+.page-header p { margin: 4px 0 0; color: var(--gray-500); font-size: 13px; }
 
 /* ---------- Buttons ---------- */
 .btn {
@@ -410,13 +412,14 @@ a { color: var(--blue); text-decoration: none; }
 table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 
 .data-table th {
-  text-align: left; padding: 10px 12px; color: var(--gray-500);
-  font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .02em;
-  border-bottom: 1px solid var(--gray-200); white-space: nowrap;
+  text-align: left; padding: 11px 14px; color: var(--gray-500);
+  font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em;
+  background: var(--gray-50);
+  border-bottom: 2px solid var(--gray-200); white-space: nowrap;
 }
 
-.data-table td { padding: 11px 12px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
-.data-table tbody tr:hover { background: var(--gray-50); }
+.data-table td { padding: 13px 14px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+.data-table tbody tr:hover { background: rgba(37,99,235,.035); }
 .data-table tbody tr:last-child td { border-bottom: none; }
 
 .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
@@ -440,7 +443,11 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .form-field.span-2 { grid-column: span 2; }
 .form-field.span-3 { grid-column: span 3; }
 .form-field label { font-size: 12.5px; font-weight: 600; color: var(--gray-700); }
-.form-section-title { font-size: 12.5px; font-weight: 700; color: var(--gray-700); margin: 14px 0 8px; text-transform: uppercase; letter-spacing: .02em; }
+.form-section-title {
+  font-size: 11.5px; font-weight: 700; color: var(--gray-700);
+  margin: 18px 0 10px; text-transform: uppercase; letter-spacing: .05em;
+  padding-left: 10px; border-left: 3px solid var(--blue);
+}
 .form-section-title:first-child { margin-top: 0; }
 
 .form-field input, .form-field select, .form-field textarea {
@@ -517,19 +524,23 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 18px; border-bottom: 1px solid var(--gray-200);
+  padding: 16px 20px; border-bottom: 1px solid var(--gray-200);
+  background: var(--gray-50); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 .modal-header h3 { margin: 0; font-size: 15px; font-weight: 700; color: var(--gray-900); }
-.modal-body { padding: 16px 18px; overflow-y: auto; }
-.modal-footer { padding: 12px 18px; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end; gap: 10px; }
+.modal-body { padding: 20px; overflow-y: auto; }
+.modal-footer { padding: 14px 20px; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end; gap: 10px; }
 
 /* ---------- Navegação cruzada entre módulos (Contrato/Ata/Empenho) ---------- */
 .modal-nav-links { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
 
 .filter-banner {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  margin-bottom: 16px; padding: 10px 16px; font-size: 13px; color: var(--gray-700);
+  margin-bottom: 16px; padding: 10px 16px; font-size: 13px;
+  background: var(--blue-light); color: var(--blue-dark);
+  border: 1px solid rgba(37,99,235,.15); border-radius: var(--radius-sm);
+  font-weight: 500;
 }
 
 /* ---------- Items table inside forms (licitação/ata itens) ---------- */
@@ -544,8 +555,9 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 /* ---------- Empty state ---------- */
 .empty-state {
   text-align: center; padding: 48px 20px; color: var(--gray-500);
-  font-size: 13.5px;
+  font-size: 13.5px; display: flex; flex-direction: column; align-items: center; gap: 8px;
 }
+.empty-state svg { opacity: .25; }
 
 /* ---------- Licitação: cards de listagem, tags, agenda vinculada ---------- */
 .link-btn {

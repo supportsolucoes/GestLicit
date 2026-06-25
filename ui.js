@@ -63,7 +63,13 @@ export function confirmDialog(message, { title = 'Confirmar ação', confirmLabe
 }
 
 export function renderEmptyState(message) {
-  return `<div class="empty-state">${message}</div>`;
+  return `<div class="empty-state">
+    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="44" height="44">
+      <rect x="6" y="8" width="36" height="32" rx="3"/>
+      <path d="M6 24h10l4 5h8l4-5h10"/>
+    </svg>
+    ${message}
+  </div>`;
 }
 
 export function badge(label, variant = 'muted') {
