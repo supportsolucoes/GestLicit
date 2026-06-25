@@ -818,3 +818,74 @@ create policy "documentos_storage_insert" on storage.objects for insert to authe
 drop policy if exists "documentos_storage_delete" on storage.objects;
 create policy "documentos_storage_delete" on storage.objects for delete to authenticated
   using (bucket_id = 'documentos' and public.get_user_role() = 'administrador');
+
+-- ============================================================
+-- ALTERAÇÕES v1.11 — Bloco "Faturamento e Recebimentos"
+-- Aditivo e idempotente: seguro rodar de novo sobre o banco já em produção.
+-- Próxima camada do fluxo financeiro: Ata/Contrato → Empenho → Entregas →
+-- Faturamento → Recebimentos. Uma Fatura agrupa uma ou mais Entregas já
+-- lançadas (cada Entrega só pode estar em uma Fatura por vez — marcada via
+-- empenho_entregas.faturamento_id). Situação "Paga"/"Paga parcialmente" NUNCA
+-- é armazenada — é sempre calculada a partir da soma de faturamento_recebimentos
+-- contra valor_fatura, mesmo padrão usado no saldo de Ata e de Entrega do
+-- Empenho. A coluna "situacao" aqui só guarda o estado manual "Aberta"/"Cancelada".
+-- ============================================================
+
+create table if not exists public.faturamentos (
+  id              bigserial primary key,
+  empenho_id      bigint not null references public.empenhos(id) on delete cascade,
+  numero_fatura   text not null,
+  data_emissao    date,
+  valor_fatura    numeric(14,2) not null default 0,
+  situacao        text not null default 'Aberta' check (situacao in ('Aberta', 'Cancelada')),
+  observacoes     text,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+
+alter table public.empenho_entregas
+  add column if not exists faturamento_id bigint references public.faturamentos(id) on delete set null;
+
+create table if not exists public.faturamento_recebimentos (
+  id                  bigserial primary key,
+  faturamento_id      bigint not null references public.faturamentos(id) on delete cascade,
+  data_recebimento    date not null default current_date,
+  valor               numeric(14,2) not null default 0,
+  forma_recebimento   text,
+  observacao          text,
+  created_at          timestamptz not null default now()
+);
+
+alter table public.faturamentos              enable row level security;
+alter table public.faturamento_recebimentos  enable row level security;
+
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['faturamentos', 'faturamento_recebimentos']
+  loop
+    execute format('drop policy if exists "%1$s_select" on public.%1$I;', t);
+    execute format('create policy "%1$s_select" on public.%1$I for select to authenticated using (true);', t);
+
+    execute format('drop policy if exists "%1$s_insert" on public.%1$I;', t);
+    execute format('create policy "%1$s_insert" on public.%1$I for insert to authenticated
+                     with check (public.get_user_role() <> ''consulta'');', t);
+
+    execute format('drop policy if exists "%1$s_update" on public.%1$I;', t);
+    execute format('create policy "%1$s_update" on public.%1$I for update to authenticated
+                     using (public.get_user_role() <> ''consulta'')
+                     with check (public.get_user_role() <> ''consulta'');', t);
+
+    execute format('drop policy if exists "%1$s_delete" on public.%1$I;', t);
+    execute format('create policy "%1$s_delete" on public.%1$I for delete to authenticated
+                     using (public.get_user_role() = ''administrador'');', t);
+  end loop;
+end;
+$$;
+
+drop trigger if exists set_updated_at on public.faturamentos;
+create trigger set_updated_at before update on public.faturamentos
+  for each row execute function public.set_updated_at();
+
+notify pgrst, 'reload schema';

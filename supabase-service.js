@@ -323,6 +323,56 @@ export async function deleteEntrega(id) {
   return handle(sb().from('empenho_entregas').delete().eq('id', id));
 }
 
+export async function listAllEntregasComItem() {
+  return handle(sb().from('empenho_entregas').select('*, item:empenho_itens(id,empenho_id,produto_descricao,valor_unitario)'));
+}
+
+export async function marcarEntregasFaturamento(entregaIds, faturamentoId) {
+  if (!entregaIds || !entregaIds.length) return;
+  return handle(sb().from('empenho_entregas').update({ faturamento_id: faturamentoId }).in('id', entregaIds));
+}
+
+// ============================================================
+// Faturamento e Recebimentos
+// ============================================================
+const FATURAMENTO_SELECT = '*, empenho:empenhos(id,numero_empenho,orgao:orgaos(id,nome))';
+
+export async function listFaturamentos() {
+  return handle(sb().from('faturamentos').select(FATURAMENTO_SELECT).order('data_emissao', { ascending: false }));
+}
+
+export async function getFaturamento(id) {
+  return handle(sb().from('faturamentos').select(FATURAMENTO_SELECT).eq('id', id).single());
+}
+
+export async function createFaturamento(payload) {
+  return handle(sb().from('faturamentos').insert(payload).select(FATURAMENTO_SELECT).single());
+}
+
+export async function updateFaturamento(id, payload) {
+  return handle(sb().from('faturamentos').update(payload).eq('id', id).select(FATURAMENTO_SELECT).single());
+}
+
+export async function deleteFaturamento(id) {
+  return handle(sb().from('faturamentos').delete().eq('id', id));
+}
+
+export async function listAllRecebimentos() {
+  return handle(sb().from('faturamento_recebimentos').select('*'));
+}
+
+export async function listRecebimentos(faturamentoId) {
+  return handle(sb().from('faturamento_recebimentos').select('*').eq('faturamento_id', faturamentoId).order('data_recebimento'));
+}
+
+export async function addRecebimento(payload) {
+  return handle(sb().from('faturamento_recebimentos').insert(payload).select().single());
+}
+
+export async function deleteRecebimento(id) {
+  return handle(sb().from('faturamento_recebimentos').delete().eq('id', id));
+}
+
 // ============================================================
 // Configurações: app_settings e log de dados de demonstração
 // ============================================================

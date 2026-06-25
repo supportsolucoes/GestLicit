@@ -164,10 +164,11 @@ async function abrirFormulario(empenhoId) {
 
   const bodyHtml = `
     <form id="empenho-form">
-      ${empenhoId && (ataVinculada || contratoVinculado) ? `
+      ${empenhoId ? `
         <div class="modal-nav-links">
           ${ataVinculada ? `<button type="button" class="btn btn-ghost btn-sm" data-action="nav.go" data-page="atas" data-open-id="${ataVinculada.id}">${ICONS.atas} Ver Ata vinculada</button>` : ''}
           ${contratoVinculado ? `<button type="button" class="btn btn-ghost btn-sm" data-action="nav.go" data-page="contratos" data-open-id="${contratoVinculado.id}">${ICONS.contratos} Ver Contrato vinculado</button>` : ''}
+          <button type="button" class="btn btn-ghost btn-sm" data-action="nav.go" data-page="faturamento" data-filter-key="empenho_id" data-filter-value="${empenhoId}" data-filter-label="Empenho ${escapeHtml(empenho.numero_empenho || '')}">${ICONS.faturamento} Ver Faturamento(s)</button>
         </div>
       ` : ''}
       <div class="form-section-title">Dados do empenho</div>

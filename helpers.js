@@ -129,6 +129,21 @@ export function calcSaldoEmpenhoItem(item, entregas) {
   return { entregue, restante, percentual };
 }
 
+export function calcSaldoFaturamento(fatura, recebimentos) {
+  const recebido = sumBy(recebimentos.filter((r) => r.faturamento_id === fatura.id), (r) => r.valor);
+  const total = Number(fatura.valor_fatura) || 0;
+  const restante = Math.max(total - recebido, 0);
+  const percentual = total > 0 ? Math.min((recebido / total) * 100, 100) : 0;
+  const situacaoEfetiva = fatura.situacao === 'Cancelada'
+    ? 'Cancelada'
+    : restante <= 0 && total > 0
+      ? 'Paga'
+      : recebido > 0
+        ? 'Paga parcialmente'
+        : 'Aberta';
+  return { recebido, restante, percentual, situacaoEfetiva };
+}
+
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
