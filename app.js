@@ -90,18 +90,26 @@ function navigateTo(pageId, params) {
   byId('sidebar')?.classList.remove('mobile-open');
 }
 
+function updateCollapseIcon() {
+  const sb = byId('sidebar');
+  if (!sb) return;
+  const isCollapsed = sb.classList.contains('collapsed');
+  byId('btn-collapse-sidebar').innerHTML = isCollapsed ? ICONS.chevronRight : ICONS.chevronLeft;
+  byId('btn-collapse-sidebar').title = isCollapsed ? 'Expandir menu' : 'Recolher menu';
+}
+
 function renderSidebar() {
   const nav = byId('sidebar-nav');
   nav.innerHTML = PAGE_META
     .filter((p) => canAccessPage(p))
     .map((p) => `
-      <div class="nav-item" data-page="${p.id}" data-action="nav.go">
+      <div class="nav-item" data-page="${p.id}" data-action="nav.go" data-tooltip="${p.label}">
         ${ICONS[p.icon] || ''}
         <span>${p.label}</span>
       </div>
     `).join('');
-  byId('btn-collapse-sidebar').innerHTML = ICONS.menu;
   byId('btn-mobile-menu').innerHTML = ICONS.menu;
+  updateCollapseIcon();
 }
 
 function updateUserChip() {
@@ -235,6 +243,10 @@ async function bootstrapApp(session) {
   byId('login-screen').classList.add('hidden');
   byId('app-shell').classList.remove('hidden');
   renderSidebar();
+  if (localStorage.getItem('gl-sidebar')) {
+    byId('sidebar').classList.add('collapsed');
+    updateCollapseIcon();
+  }
   updateUserChip();
   collectActions();
   setLoading(true);
@@ -256,8 +268,29 @@ function showLoginScreen() {
 // ---------------------------------------------------------------
 // Bind global
 // ---------------------------------------------------------------
+function initSidebarTooltip() {
+  const tip = Object.assign(document.createElement('div'), { className: 'sidebar-tooltip' });
+  document.body.appendChild(tip);
+  const sbEl = byId('sidebar');
+  sbEl.addEventListener('mouseover', (e) => {
+    if (!sbEl.classList.contains('collapsed')) return;
+    const item = e.target.closest('[data-tooltip]');
+    if (!item || !sbEl.contains(item)) return;
+    const r = item.getBoundingClientRect();
+    tip.textContent = item.dataset.tooltip;
+    tip.style.top = `${r.top + r.height / 2}px`;
+    tip.style.left = `${r.right + 10}px`;
+    tip.classList.add('visible');
+  });
+  sbEl.addEventListener('mouseout', (e) => {
+    if (e.target.closest('[data-tooltip]')) tip.classList.remove('visible');
+  });
+  sbEl.addEventListener('click', () => tip.classList.remove('visible'));
+}
+
 function bindGlobalEvents() {
   byId('login-form').addEventListener('submit', handleLoginSubmit);
+  initSidebarTooltip();
 
   document.addEventListener('click', (event) => {
     if (!event.target.closest('#notifications-dropdown') && !event.target.closest('[data-action="ui.toggleNotifications"]')) {
@@ -278,12 +311,21 @@ function bindGlobalEvents() {
       if (target.dataset.filterKey) params.filter = { key: target.dataset.filterKey, value: target.dataset.filterValue, label: target.dataset.filterLabel };
       if (target.dataset.openId) params.openId = Number(target.dataset.openId);
       navigateTo(target.dataset.page, params);
+      const sb = byId('sidebar');
+      if (window.innerWidth >= 881 && !sb.classList.contains('collapsed')) {
+        sb.classList.add('collapsed');
+        localStorage.setItem('gl-sidebar', '1');
+        updateCollapseIcon();
+      }
       return;
     }
     if (action === 'notif.marcarLido') { marcarNotificacaoLida(target); return; }
     if (action === 'ui.toggleSidebar') {
       toggleSidebar();
-      byId('sidebar').classList.toggle('collapsed');
+      const sb = byId('sidebar');
+      sb.classList.toggle('collapsed');
+      localStorage.setItem('gl-sidebar', sb.classList.contains('collapsed') ? '1' : '');
+      updateCollapseIcon();
       return;
     }
     if (action === 'ui.toggleMobileSidebar') { byId('sidebar').classList.toggle('mobile-open'); return; }
