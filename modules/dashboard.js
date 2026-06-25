@@ -22,57 +22,78 @@ function fmtShort(val) {
 export async function render(container) {
   container.innerHTML = `<div class="empty-state">Carregando indicadores...</div>`;
 
-  const [itens, atas, certidoes] = await Promise.all([
+  const [itens, atas, contratos, certidoes, faturamentos, recebimentos] = await Promise.all([
     Service.listAllLicitacaoItens(),
     Service.listAtas(),
+    Service.listContratos(),
     Service.Certidoes.list(),
+    Service.listFaturamentos(),
+    Service.listAllRecebimentos(),
   ]);
 
+  // ── Desempenho comercial ───────────────────────────────────────────────────
   const decididos = itens.filter((i) => i.status !== 'Em disputa');
   const ganhos = itens.filter((i) => i.status === 'Ganhou');
   const emDisputa = itens.filter((i) => i.status === 'Em disputa');
   const taxaExito = decididos.length ? (ganhos.length / decididos.length) * 100 : 0;
   const valorGanho = sumBy(ganhos, (i) => Number(i.valor_final || 0) * Number(i.quantidade || 0));
-  const atasVigentes = atas.filter((a) => a.situacao === 'Vigente');
-  const valorAtasVigentes = sumBy(atasVigentes, (a) => a.valor_total);
 
+  // ── Atas ───────────────────────────────────────────────────────────────────
+  const atasVigentes = atas.filter((a) => a.situacao === 'Vigente');
+  const valorAtasVigentes = sumBy(atasVigentes, (a) => Number(a.valor_total || 0));
+
+  // ── Faturamento em aberto ──────────────────────────────────────────────────
+  const faturamentosAtivos = faturamentos.filter((f) => f.situacao !== 'Cancelada');
+  const recebPorFatura = new Map();
+  recebimentos.forEach((r) => recebPorFatura.set(r.faturamento_id, (recebPorFatura.get(r.faturamento_id) || 0) + Number(r.valor || 0)));
+  const totalFaturado = sumBy(faturamentosAtivos, (f) => Number(f.valor_fatura || 0));
+  const totalRecebido = [...recebPorFatura.values()].reduce((a, b) => a + b, 0);
+  const totalEmAberto = Math.max(0, totalFaturado - totalRecebido);
+
+  const faturasEmAberto = faturamentosAtivos
+    .map((f) => {
+      const receb = recebPorFatura.get(f.id) || 0;
+      return { ...f, receb, emAberto: Number(f.valor_fatura || 0) - receb, perc: f.valor_fatura > 0 ? (receb / f.valor_fatura) * 100 : 0 };
+    })
+    .filter((f) => f.emAberto > 0.01)
+    .sort((a, b) => b.emAberto - a.emAberto)
+    .slice(0, 6);
+
+  // ── Alertas (atas + contratos + certidões) ────────────────────────────────
   const alertasAta = atasVigentes
     .map((a) => ({ tipo: 'Ata', titulo: a.numero_ata, meta: a.orgao?.nome || '-', data: a.vigencia_fim, alert: alertLevel(a.vigencia_fim) }))
     .filter((a) => a.alert);
+  const alertasContrato = contratos.filter((c) => c.situacao === 'Vigente')
+    .map((c) => ({ tipo: 'Contrato', titulo: c.numero_contrato, meta: c.orgao?.nome || '-', data: c.vigencia_fim, alert: alertLevel(c.vigencia_fim) }))
+    .filter((c) => c.alert);
   const alertasCertidao = certidoes
     .map((c) => ({ tipo: 'Certidão', titulo: c.tipo, meta: c.numero || '-', data: c.data_validade, alert: alertLevel(c.data_validade) }))
     .filter((c) => c.alert);
-  const alertas = [...alertasAta, ...alertasCertidao].sort((a, b) => a.alert.days - b.alert.days);
+  const alertas = [...alertasAta, ...alertasContrato, ...alertasCertidao].sort((a, b) => a.alert.days - b.alert.days);
 
+  // ── Donut ─────────────────────────────────────────────────────────────────
   const statusCounts = groupBy(itens, (i) => i.status);
   const donutData = [...statusCounts.entries()].map(([status, list]) => ({
     label: status, value: list.length, color: STATUS_HEX[status] || '#94A3B8',
   }));
 
-  const porOrgao = groupBy(atas, (a) => a.orgao?.nome || 'Não informado');
-  const barOrgaoData = [...porOrgao.entries()]
-    .map(([nome, list]) => ({ label: nome, value: sumBy(list, (a) => a.valor_total) }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 6);
-
-  const meses = [];
+  // ── Evolução mensal (últimos 6 meses) ─────────────────────────────────────
   const now = new Date();
-  for (let i = 5; i >= 0; i -= 1) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    meses.push({ key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleDateString('pt-BR', { month: 'short' }) });
-  }
-  const evolucaoData = meses.map(({ key, label }) => {
-    const [y, m] = key.split('-').map(Number);
-    const valor = sumBy(
+  const meses = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    return { y: d.getFullYear(), m: d.getMonth(), label: d.toLocaleDateString('pt-BR', { month: 'short' }) };
+  });
+  const evolucaoData = meses.map(({ y, m, label }) => ({
+    label,
+    value: sumBy(
       ganhos.filter((i) => {
         if (!i.licitacao?.data_sessao) return false;
         const d = new Date(`${i.licitacao.data_sessao}T00:00:00`);
         return d.getFullYear() === y && d.getMonth() === m;
       }),
       (i) => Number(i.valor_final || 0) * Number(i.quantidade || 0),
-    );
-    return { label, value: valor };
-  });
+    ),
+  }));
 
   const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -107,13 +128,13 @@ export async function render(container) {
         <div class="kpi-icon kpi-icon--indigo">${ICONS.empenhos}</div>
         <div class="kpi-value">${fmtShort(valorGanho)}</div>
         <div class="kpi-label">Valor ganho</div>
-        <div class="kpi-foot">Itens com status Ganhou</div>
+        <div class="kpi-foot">${ganhos.length} itens · acumulado</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-icon kpi-icon--orange">${ICONS.agenda}</div>
-        <div class="kpi-value">${alertas.length}</div>
-        <div class="kpi-label">Vencimentos</div>
-        <div class="kpi-foot">Próximos 90 dias</div>
+        <div class="kpi-icon kpi-icon--orange">${ICONS.faturamento}</div>
+        <div class="kpi-value">${fmtShort(totalEmAberto)}</div>
+        <div class="kpi-label">Em aberto</div>
+        <div class="kpi-foot">${faturasEmAberto.length} fatura(s) pendentes</div>
       </div>
     </div>
 
@@ -128,7 +149,7 @@ export async function render(container) {
       <div class="card">
         <div class="dash-card-header">
           <div class="dash-card-title">Resultado dos itens</div>
-          <div class="dash-card-subtitle">Distribuição por status</div>
+          <div class="dash-card-subtitle">Distribuição por status · ${itens.length} itens total</div>
         </div>
         <canvas id="chart-status" style="width:100%; height:180px;"></canvas>
         <div class="donut-legend">
@@ -145,15 +166,8 @@ export async function render(container) {
     <div class="grid-2" style="margin-top:18px;">
       <div class="card">
         <div class="dash-card-header">
-          <div class="dash-card-title">Valor por órgão</div>
-          <div class="dash-card-subtitle">Top 6 atas por valor total</div>
-        </div>
-        <canvas id="chart-orgaos" style="width:100%; height:220px;"></canvas>
-      </div>
-      <div class="card">
-        <div class="dash-card-header">
           <div class="dash-card-title">Alertas de vencimento</div>
-          <div class="dash-card-subtitle">Atas e certidões a vencer</div>
+          <div class="dash-card-subtitle">Atas, contratos e certidões a vencer</div>
         </div>
         <div class="alert-list">
           ${alertas.length ? alertas.slice(0, 8).map((a) => `
@@ -167,12 +181,35 @@ export async function render(container) {
           `).join('') : `<p style="color:var(--gray-500);font-size:13px;padding:20px 0;text-align:center;">Nenhum vencimento nos próximos 90 dias.</p>`}
         </div>
       </div>
+      <div class="card">
+        <div class="dash-card-header">
+          <div class="dash-card-title">Faturas pendentes</div>
+          <div class="dash-card-subtitle">${faturasEmAberto.length ? `${faturasEmAberto.length} fatura(s) · ${fmtShort(totalEmAberto)} a receber` : 'Tudo recebido'}</div>
+        </div>
+        ${faturasEmAberto.length ? `
+          <div class="rel-prog-list">
+            ${faturasEmAberto.map((f) => {
+              const barColor = f.perc >= 75 ? '#16A34A' : f.perc >= 40 ? '#2563EB' : '#D97706';
+              return `
+                <div class="rel-prog-row">
+                  <div class="rel-prog-header">
+                    <span class="rel-prog-title">${f.numero_fatura || `Fatura #${f.id}`} · ${f.empenho?.orgao?.nome || '-'}</span>
+                    <span class="rel-prog-meta">${fmtShort(f.emAberto)} em aberto</span>
+                  </div>
+                  <div class="rel-prog-bar-wrap">
+                    <div class="rel-prog-bar" style="width:${f.perc.toFixed(1)}%; background:${barColor}"></div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        ` : `<p style="color:var(--gray-500);font-size:13px;padding:20px 0;text-align:center;">Nenhuma fatura em aberto.</p>`}
+      </div>
     </div>
   `;
 
   drawBarChart(byId('chart-evolucao'), evolucaoData, { valueFormatter: (v) => formatCurrency(v).replace('R$', '').trim() });
   drawDonutChart(byId('chart-status'), donutData, { centerLabel: String(itens.length) });
-  drawBarChart(byId('chart-orgaos'), barOrgaoData, { color: '#2563EB', valueFormatter: (v) => formatCurrency(v).replace('R$', '').trim() });
 }
 
 export const actions = {};
