@@ -97,8 +97,12 @@ function updateCollapseIcon() {
   const sb = byId('sidebar');
   if (!sb) return;
   const isCollapsed = sb.classList.contains('collapsed');
-  byId('btn-collapse-sidebar').innerHTML = isCollapsed ? ICONS.chevronRight : ICONS.chevronLeft;
-  byId('btn-collapse-sidebar').title = isCollapsed ? 'Expandir menu' : 'Recolher menu';
+  const btn = byId('btn-collapse-sidebar');
+  btn.innerHTML = isCollapsed
+    ? `${ICONS.chevronRight}<span>Expandir menu</span>`
+    : `${ICONS.chevronLeft}<span>Recolher menu</span>`;
+  btn.title = isCollapsed ? 'Expandir menu' : 'Recolher menu';
+  btn.dataset.tooltip = isCollapsed ? 'Expandir menu' : 'Recolher menu';
 }
 
 function renderSidebar() {
