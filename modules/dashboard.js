@@ -1,8 +1,8 @@
 import * as Service from '../supabase-service.js';
 import { byId, formatCurrency, formatDate, alertLevel, sumBy, groupBy } from '../helpers.js';
-import { renderEmptyState, badge } from '../ui.js';
+import { badge } from '../ui.js';
 import { drawBarChart, drawDonutChart } from '../charts.js';
-import { STATUS_COLOR } from '../constants.js';
+import { ICONS } from '../constants.js';
 
 const STATUS_HEX = {
   'Ganhou': '#16A34A',
@@ -12,6 +12,12 @@ const STATUS_HEX = {
   'Revogado': '#D97706',
   'Em disputa': '#2563EB',
 };
+
+function fmtShort(val) {
+  if (val >= 1e6) return `R$ ${(val / 1e6).toFixed(1).replace('.', ',')}M`;
+  if (val >= 1e3) return `R$ ${(val / 1e3).toFixed(0)}K`;
+  return formatCurrency(val);
+}
 
 export async function render(container) {
   container.innerHTML = `<div class="empty-state">Carregando indicadores...</div>`;
@@ -39,7 +45,9 @@ export async function render(container) {
   const alertas = [...alertasAta, ...alertasCertidao].sort((a, b) => a.alert.days - b.alert.days);
 
   const statusCounts = groupBy(itens, (i) => i.status);
-  const donutData = [...statusCounts.entries()].map(([status, list]) => ({ label: status, value: list.length, color: STATUS_HEX[status] || '#94A3B8' }));
+  const donutData = [...statusCounts.entries()].map(([status, list]) => ({
+    label: status, value: list.length, color: STATUS_HEX[status] || '#94A3B8',
+  }));
 
   const porOrgao = groupBy(atas, (a) => a.orgao?.nome || 'Não informado');
   const barOrgaoData = [...porOrgao.entries()]
@@ -61,78 +69,102 @@ export async function render(container) {
         const d = new Date(`${i.licitacao.data_sessao}T00:00:00`);
         return d.getFullYear() === y && d.getMonth() === m;
       }),
-      (i) => Number(i.valor_final || 0) * Number(i.quantidade || 0)
+      (i) => Number(i.valor_final || 0) * Number(i.quantidade || 0),
     );
     return { label, value: valor };
   });
+
+  const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   container.innerHTML = `
     <div class="page-header">
       <div>
         <h1>Dashboard</h1>
-        <p>Visão geral do ciclo licitatório.</p>
+        <p>${hoje.charAt(0).toUpperCase() + hoje.slice(1)} · Visão geral do ciclo licitatório</p>
       </div>
     </div>
 
-    <div class="stat-grid">
-      <div class="stat-card">
-        <div class="stat-label">Itens em disputa</div>
-        <div class="stat-value">${emDisputa.length}</div>
-        <div class="stat-foot">Aguardando resultado</div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--blue">${ICONS.licitacoes}</div>
+        <div class="kpi-value">${emDisputa.length}</div>
+        <div class="kpi-label">Em disputa</div>
+        <div class="kpi-foot">Aguardando resultado</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Taxa de êxito</div>
-        <div class="stat-value">${taxaExito.toFixed(1)}%</div>
-        <div class="stat-foot">${ganhos.length} ganhos de ${decididos.length} decididos</div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--green">${ICONS.check}</div>
+        <div class="kpi-value">${taxaExito.toFixed(1)}%</div>
+        <div class="kpi-label">Taxa de êxito</div>
+        <div class="kpi-foot">${ganhos.length} de ${decididos.length} decididos</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Atas/Empenhos vigentes</div>
-        <div class="stat-value">${atasVigentes.length}</div>
-        <div class="stat-foot">${formatCurrency(valorAtasVigentes)} em vigência</div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--purple">${ICONS.atas}</div>
+        <div class="kpi-value">${atasVigentes.length}</div>
+        <div class="kpi-label">Atas vigentes</div>
+        <div class="kpi-foot">${fmtShort(valorAtasVigentes)}</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Valor ganho (itens)</div>
-        <div class="stat-value">${formatCurrency(valorGanho)}</div>
-        <div class="stat-foot">Soma de itens com status Ganhou</div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--indigo">${ICONS.empenhos}</div>
+        <div class="kpi-value">${fmtShort(valorGanho)}</div>
+        <div class="kpi-label">Valor ganho</div>
+        <div class="kpi-foot">Itens com status Ganhou</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Vencimentos próximos</div>
-        <div class="stat-value">${alertas.length}</div>
-        <div class="stat-foot">Atas e certidões em até 90 dias</div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--orange">${ICONS.agenda}</div>
+        <div class="kpi-value">${alertas.length}</div>
+        <div class="kpi-label">Vencimentos</div>
+        <div class="kpi-foot">Próximos 90 dias</div>
       </div>
     </div>
 
     <div class="grid-2">
       <div class="card">
-        <strong>Evolução mensal — valor ganho</strong>
-        <canvas id="chart-evolucao" style="width:100%; height:240px; margin-top:10px;"></canvas>
+        <div class="dash-card-header">
+          <div class="dash-card-title">Evolução mensal</div>
+          <div class="dash-card-subtitle">Valor ganho nos últimos 6 meses</div>
+        </div>
+        <canvas id="chart-evolucao" style="width:100%; height:220px;"></canvas>
       </div>
       <div class="card">
-        <strong>Resultado dos itens disputados</strong>
-        <canvas id="chart-status" style="width:100%; height:240px; margin-top:10px;"></canvas>
-        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;">
-          ${donutData.map((d) => `<span style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--gray-700);"><span style="width:9px;height:9px;border-radius:50%;background:${d.color};display:inline-block;"></span>${d.label} (${d.value})</span>`).join('')}
+        <div class="dash-card-header">
+          <div class="dash-card-title">Resultado dos itens</div>
+          <div class="dash-card-subtitle">Distribuição por status</div>
+        </div>
+        <canvas id="chart-status" style="width:100%; height:180px;"></canvas>
+        <div class="donut-legend">
+          ${donutData.map((d) => `
+            <span class="donut-legend-item">
+              <span class="donut-legend-dot" style="background:${d.color}"></span>
+              ${d.label} <strong>${d.value}</strong>
+            </span>
+          `).join('')}
         </div>
       </div>
     </div>
 
     <div class="grid-2" style="margin-top:18px;">
       <div class="card">
-        <strong>Valor de atas por órgão (top 6)</strong>
-        <canvas id="chart-orgaos" style="width:100%; height:240px; margin-top:10px;"></canvas>
+        <div class="dash-card-header">
+          <div class="dash-card-title">Valor por órgão</div>
+          <div class="dash-card-subtitle">Top 6 atas por valor total</div>
+        </div>
+        <canvas id="chart-orgaos" style="width:100%; height:220px;"></canvas>
       </div>
       <div class="card">
-        <strong>Alertas de vencimento</strong>
-        <div style="margin-top:10px; max-height:260px; overflow-y:auto;">
-          ${alertas.length ? alertas.map((a) => `
-            <div style="display:flex; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--gray-100); font-size:13px;">
-              <div>
-                <strong>${a.tipo}: ${a.titulo}</strong><br/>
-                <span style="color:var(--gray-500); font-size:12px;">${a.meta} · vence em ${formatDate(a.data)}</span>
+        <div class="dash-card-header">
+          <div class="dash-card-title">Alertas de vencimento</div>
+          <div class="dash-card-subtitle">Atas e certidões a vencer</div>
+        </div>
+        <div class="alert-list">
+          ${alertas.length ? alertas.slice(0, 8).map((a) => `
+            <div class="alert-row">
+              <div class="alert-row-body">
+                <div class="alert-row-title">${a.tipo}: ${a.titulo}</div>
+                <div class="alert-row-meta">${a.meta} · vence ${formatDate(a.data)}</div>
               </div>
               ${badge(a.alert.level === 'vencido' ? 'Vencido' : `${a.alert.days}d`, a.alert.level === 'vencido' ? 'danger' : 'warning')}
             </div>
-          `).join('') : renderEmptyState('Nenhum vencimento nos próximos 90 dias.')}
+          `).join('') : `<p style="color:var(--gray-500);font-size:13px;padding:20px 0;text-align:center;">Nenhum vencimento nos próximos 90 dias.</p>`}
         </div>
       </div>
     </div>
