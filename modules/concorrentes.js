@@ -41,6 +41,9 @@ function fmtShort(val) {
 export async function render(container) {
   await crudMod.render(container);
 
+  // Remove caixa anterior para evitar duplicatas em renders concorrentes
+  document.getElementById('analise-cnpj-box')?.remove();
+
   const box = document.createElement('div');
   box.className = 'card';
   box.id = 'analise-cnpj-box';
