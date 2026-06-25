@@ -171,15 +171,17 @@ a { color: var(--blue); text-decoration: none; }
 .nav-item.active svg { color: var(--sb-active-text); }
 
 .sidebar.collapsed .nav-item span { display: none; }
-.sidebar.collapsed .nav-item { justify-content: center; padding-left: 0; padding-right: 0; }
+.sidebar.collapsed .nav-item { justify-content: center; padding-left: 0; padding-right: 0; border-left-width: 0; }
+.sidebar.collapsed .nav-item.active { border-left-width: 0; }
 .sidebar.collapsed .sidebar-brand .brand-name { display: none; }
 .sidebar.collapsed .sidebar-brand { padding: 0; justify-content: center; }
 
-.sidebar-help { padding: 8px; border-top: 1px solid var(--sb-border); }
+/* Zona de rodapé unificada — uma única borda separa nav do rodapé */
+.sidebar-help { padding: 4px 8px 0; border-top: 1px solid var(--sb-border); }
 .sidebar-help .nav-item { color: var(--sb-text); text-decoration: none; }
 .sidebar-help .nav-item:hover { color: var(--white); }
 
-.sidebar-footer { padding: 8px; border-top: 1px solid var(--sb-border); }
+.sidebar-footer { padding: 0 8px 8px; border-top: none; }
 
 /* Botão de colapso como nav item completo */
 #btn-collapse-sidebar {

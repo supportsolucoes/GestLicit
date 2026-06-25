@@ -711,6 +711,11 @@ drop policy if exists "notificacoes_lidas_insert" on public.notificacoes_lidas;
 create policy "notificacoes_lidas_insert" on public.notificacoes_lidas for insert to authenticated
   with check (user_id = auth.uid());
 
+drop policy if exists "notificacoes_lidas_update" on public.notificacoes_lidas;
+create policy "notificacoes_lidas_update" on public.notificacoes_lidas for update to authenticated
+  using  (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
 drop policy if exists "notificacoes_lidas_delete" on public.notificacoes_lidas;
 create policy "notificacoes_lidas_delete" on public.notificacoes_lidas for delete to authenticated
   using (user_id = auth.uid());
