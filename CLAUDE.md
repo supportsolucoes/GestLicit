@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Guia para trabalhar no código do **GestLicit** — sistema interno da Humana Alimentar para controle do ciclo licitatório do ponto de vista de **fornecedora** (não do órgão público).
+Guia para trabalhar no código do **GestLicit** — projeto pessoal do usuário (não é um sistema interno da Humana Alimentar, embora tenha sido modelado a partir de dados e referências dela) para controle do ciclo licitatório do ponto de vista de uma empresa **fornecedora** que disputa pregões (não do órgão público que licita).
 
 ## Comandos
 
@@ -47,10 +47,11 @@ Schema 100% relacional (sem JSONB de estado, diferente do projeto Fluxo) — ver
 - `app_profiles` — perfil/role do usuário. Só 2 perfis desde o Bloco 11: `administrador` (acesso total) e `usuario` (acesso restrito a `paginas_permitidas`, array de ids de página liberadas pelo administrador). Criado automaticamente por trigger no cadastro (`handle_new_user`, nasce como `usuario` sem páginas).
 - `app_settings` — chave/valor de configurações de sistema (hoje só `portal_transparencia_api_key`), editável em Configurações em vez de `config.js`. Select liberado para qualquer autenticado (a Análise de Concorrente precisa ler em qualquer papel), insert/update restrito a `administrador`. Cacheada em `state.lookups.settings` (mapa chave→valor), atualizada por `refreshLookups()`.
 - `demo_seed_log` — rastreia os registros criados pelo gerador de "Dados de demonstração" (Configurações), para permitir apagar tudo de uma vez. Só `administrador` lê/escreve.
+- `faturamentos` + `faturamento_recebimentos` — etapa final do fluxo financeiro (ver Bloco 12). `faturamentos.empenho_id` é obrigatório; cada Fatura agrupa uma ou mais `empenho_entregas` específicas (marcadas via `empenho_entregas.faturamento_id`, nullable, `on delete set null` — uma Entrega só pode estar em uma Fatura por vez). `faturamentos.situacao` só guarda os estados manuais `Aberta`/`Cancelada`; "Paga"/"Paga parcialmente" são sempre calculados (`calcSaldoFaturamento` em `helpers.js`) a partir da soma de `faturamento_recebimentos.valor` contra `valor_fatura` — mesmo padrão de saldo das demais tabelas.
 
 RLS: qualquer autenticado lê tudo (é uma equipe única); apenas `administrador` pode excluir. Insert/update ficaram liberados para qualquer autenticado desde o Bloco 11 (não existe mais perfil `consulta` — as policies que checavam `role <> 'consulta'` continuam no banco mas hoje são sempre verdadeiras, já que nenhum perfil se chama mais assim). O controle de quem vê o quê é feito **na UI** (menu e `navigateTo`, via `canAccessPage()` em `state.js`), não no RLS — decisão deliberada do usuário para não ter que reescrever policy por tabela.
 
-Saldo, % consumido e alertas de vencimento (90/60/30/15/7 dias) **nunca são armazenados** — são sempre calculados em `helpers.js` (`calcSaldoAtaItemPorEmpenho`, `alertLevel`) a partir da data de hoje. `calcSaldoAtaItem` (baseado em `ata_consumos`) ainda existe no arquivo mas não é mais chamada por nenhum módulo — é código legado, não removido por segurança, mas não deve ser reutilizada para novas features (usar `calcSaldoAtaItemPorEmpenho`).
+Saldo, % consumido e alertas de vencimento (90/60/30/15/7 dias) **nunca são armazenados** — são sempre calculados em `helpers.js` (`calcSaldoAtaItemPorEmpenho`, `calcSaldoEmpenhoItem`, `calcSaldoFaturamento`, `alertLevel`) a partir da data de hoje. Esse é o padrão a seguir em qualquer novo saldo/situação derivada (já apareceu em Ata, Empenho/Entrega e Faturamento/Recebimento): a coluna no banco só guarda o estado manual (ex.: `situacao = 'Aberta'/'Cancelada'`), nunca o estado calculável (ex.: "Pago"). `calcSaldoAtaItem` (baseado em `ata_consumos`) ainda existe no arquivo mas não é mais chamada por nenhum módulo — é código legado, não removido por segurança, mas não deve ser reutilizada para novas features (usar `calcSaldoAtaItemPorEmpenho`).
 
 ### Arquivos principais
 - `index.html` — shell único: tela de login + layout (sidebar recolhível + header fixo) + container de página
@@ -65,6 +66,10 @@ Saldo, % consumido e alertas de vencimento (90/60/30/15/7 dias) **nunca são arm
 - `constants.js` — ícones SVG inline, menu, enums de status/modalidade/perfil
 - `modules/_crud.js` — fábrica genérica de CRUD (lista + busca + modal) usada pelos cadastros simples (Órgãos, Concorrentes, Parceiros, Produtos, Certidões, Agenda)
 - `modules/*.js` — um arquivo por página do menu, cada um exportando `render(container)` e `actions` (mapa `'modulo.acao': fn`)
+- `manual.html` — manual de uso do sistema (link "Ajuda / Manual" no rodapé da sidebar, abre em nova aba), independente do app — HTML/CSS/JS próprios, sem importar nada do app. Tem uma imagem real (screenshot) de cada tela principal, com lightbox ao clicar (ver Bloco 14 para como gerar novos screenshots).
+
+### Validação visual sem tocar o Supabase real
+Padrão usado em praticamente todo bloco novo (e para os screenshots do manual): copiar a pasta do projeto para um diretório isolado, substituir só `supabase-service.js` (e às vezes `state.js`) por uma versão mock com dados fictícios em memória — mas reaproveitando os arquivos **reais** de `index.html`, `app.js`, `state.js` e `modules/*.js` sempre que possível, para que a validação exercite o código de produção de fato. Servir com um servidor estático Node simples e abrir com Playwright (`py` no Windows) para tirar screenshots e clicar em fluxos completos antes de entregar. Nunca usar dados ou credenciais reais nesse processo.
 
 ### Roteamento e ações
 Não há framework de UI. `app.js` mantém `MODULES = { dashboard, licitacoes, atas, ... }` e:
@@ -88,6 +93,8 @@ Não há framework de UI. `app.js` mantém `MODULES = { dashboard, licitacoes, a
 2. `git init && git add . && git commit -m "..." && git remote add origin <url> && git push -u origin main`.
 3. Em **Settings → Pages**, branch `main`, pasta raiz `/`.
 4. **Importante**: `config.js` ficará público no repositório — a `anon key` do Supabase é destinada a ser pública (a segurança real vem do RLS), mas confirme que o RLS está ativo em todas as tabelas antes de publicar. Desde o Bloco 6, `config.js` não guarda mais segredos de integração (a chave do Portal da Transparência foi movida para a tabela `app_settings`, editável em Configurações) — só credenciais do Supabase, que já são públicas por design.
+
+**Para sessões seguintes**: o repositório já tem `.git` local com remote `origin` apontando pro GitHub real e `gh` autenticado nesta máquina (`gh auth status` confirma) — `git push` direto funciona normalmente, não é mais preciso fazer upload manual pela interface web. Cada bloco novo deve terminar com commit + push (a menos que o usuário peça para esperar).
 
 ## Fluxo do ciclo licitatório (construído por blocos)
 
@@ -188,10 +195,19 @@ Bloco 11 — **Simplificação de perfis + cadastro de usuário pelo app + naveg
   - **Redesign da Análise de Concorrente**: usuário reportou visual "muito misturado" (rótulo e valor com pouco contraste, seções sem separação clara). Trocado `.form-section-title`/`.form-grid.cols-3`/`.form-field` (pensados para formulário editável) por um padrão novo só para exibição somente-leitura: `.info-section` (bloco com borda inferior separando cada seção), `.info-section-title` (eyebrow azul, uppercase) e `.info-grid`/`.info-field` (rótulo cinza uppercase pequeno, valor em negrito maior) — tudo em `styles.css`. Cada seção (Dados da empresa, Endereço, Atividade econômica, Sócios, Certidões, Estatísticas) agora é um bloco visualmente isolado.
   - **Padronização de campos de dinheiro em R$ 0,00**: até aqui os inputs de valor mostravam o número crú ao editar (ex. "1234.5"), sem separador de milhar nem vírgula decimal brasileira. Novo helper `formatMoneyInputValue(value)` em `helpers.js` (usa o `formatNumber` já existente) formata o valor inicial de todo input de dinheiro como "1.234,50". Para os campos "principais" (Valor do Contrato, Valor Empenhado, Valor Total da Ata, Valor Total Estimado da Licitação, Preço de custo do Produto), também foi adicionado um prefixo visual "R$" fixo (`.input-currency-wrap` em `styles.css`, um `::before` posicionado sobre o input). Nos campos de valor unitário dentro das tabelas de itens (mais estreitos), só a formatação brasileira foi aplicada, sem o prefixo "R$", para não espremer a coluna. `modules/_crud.js` ganhou um novo `type: 'currency'` (usado por Produtos) que já aplica os dois. `parseNumber()` (já existente) continua lendo esse formato de volta sem mudança, pois já tratava `.`/`,` corretamente.
 
+Bloco 12 — **Faturamento e Recebimentos** — fecha o fluxo financeiro completo (`Ata/Contrato → Empenho → Entregas → Faturamento → Recebimentos`). Módulo novo `modules/faturamento.js`, página própria no menu entre Empenhos e Produtos (não uma seção dentro do modal de Empenho — decisão tomada para ter visão consolidada do que falta receber):
+- Uma Fatura se vincula a **Entregas específicas** já lançadas (não ao Empenho de forma livre) — reforça o padrão "tudo amarrado" do projeto. Implementado via `empenho_entregas.faturamento_id` (nullable, `on delete set null`), não tabela de junção N:N, porque uma Entrega só pode estar em uma Fatura por vez.
+- No modal de Nova/Editar Fatura: select de Empenho (`disabled` ao editar, pra não invalidar os vínculos já feitos), checklist de Entregas pendentes daquele empenho (as já faturadas em outra fatura não aparecem; as desta fatura aparecem pré-marcadas), botão "Usar valor sugerido" que soma `quantidade × valor_unitario` das entregas marcadas sem sobrescrever automaticamente o campo. Seção de Recebimentos só aparece depois de salva (mesmo padrão de "Saldo e entregas" do Empenho).
+- Cross-nav: "Ver Faturamento(s)" no modal do Empenho (filtro por `empenho_id`) e "Ver Empenho vinculado" na Fatura — mesmo padrão do Bloco 11.
+- Migração "ALTERAÇÕES v1.11" em `supabase/schema.sql`.
+
+Bloco 13 — **Anexo da Nota Fiscal no Faturamento** — mesmo padrão de upload já usado em Contrato e Empenho (bucket `documentos`, pasta `Faturamento/`, coluna `faturamentos.arquivo_url`, `Service.uploadFaturamentoArquivo`, botão "Ver arquivo atual" via `getSignedUrl`). Migração "ALTERAÇÕES v1.12".
+
+Bloco 14 — **Manual dinâmico com screenshots reais** — `manual.html` ganhou uma imagem real de cada tela principal (23 screenshots), com lightbox ao clicar, e a seção de Faturamento que faltava desde o Bloco 12. As imagens foram geradas com o padrão descrito em "Validação visual sem tocar o Supabase real" acima, usando um conjunto de dados fictícios coerente (mesmo órgão/produto/licitação/ata/empenho/fatura conectados entre si, para as telas relacionadas baterem visualmente) — nenhum dado real do Supabase de produção foi exposto. Os arquivos ficam em `Imagens/manual/` (só esses são versionados; o restante de `Imagens/` são prints de referência do usuário, não commitados).
+
 ## Pendências conhecidas (próximos passos sugeridos)
 
 - Bloco de **Habilitação** e **Monitoramento** (vistos na referência visual do Licitei) ainda não têm equivalente no GestLicit.
 - A listagem de "Fase de Lance / Sessão Pública / Homologada / Desistidas" (chips com contador, vistos na referência de tags do Licitei) foi conscientemente deixada de fora — só o sistema de tags livres (criar/atribuir/filtrar) foi implementado, sem essas visões fixas.
-- Próxima camada do fluxo financeiro: **Faturamento → Recebimentos**, ainda não implementada (Entregas, bloco 7, cobre só até a entrega física; falta vincular Nota Fiscal a um Faturamento e controlar Recebimento/pagamento).
 - Relatório de Resultado Mensal em PDF é texto simples (sem tabela formatada); considerar adicionar `jspdf-autotable` se for necessário um layout mais profissional para impressão/compartilhamento externo.
 - "Itens Ganhos" em granularidade nacional (Análise de Concorrente) e Certidões TCU/CNJ não têm fonte de dados pública gratuita viável — ver Bloco 5 para o porquê, antes de tentar de novo.

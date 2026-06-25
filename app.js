@@ -98,23 +98,34 @@ function updateCollapseIcon() {
   if (!sb) return;
   const isCollapsed = sb.classList.contains('collapsed');
   const btn = byId('btn-collapse-sidebar');
-  btn.innerHTML = isCollapsed
-    ? `${ICONS.chevronRight}<span>Expandir menu</span>`
-    : `${ICONS.chevronLeft}<span>Recolher menu</span>`;
+  btn.innerHTML = isCollapsed ? ICONS.chevronRight : ICONS.chevronLeft;
   btn.title = isCollapsed ? 'Expandir menu' : 'Recolher menu';
-  btn.dataset.tooltip = isCollapsed ? 'Expandir menu' : 'Recolher menu';
 }
 
 function renderSidebar() {
   const nav = byId('sidebar-nav');
-  nav.innerHTML = PAGE_META
-    .filter((p) => canAccessPage(p))
-    .map((p) => `
-      <div class="nav-item" data-page="${p.id}" data-action="nav.go" data-tooltip="${p.label}">
-        ${ICONS[p.icon] || ''}
-        <span>${p.label}</span>
-      </div>
-    `).join('');
+  const pages = PAGE_META.filter((p) => canAccessPage(p));
+
+  // Agrupa pages preservando a ordem original
+  const groups = [];
+  for (const p of pages) {
+    const last = groups[groups.length - 1];
+    if (!last || last.label !== p.group) groups.push({ label: p.group || '', pages: [] });
+    groups[groups.length - 1].pages.push(p);
+  }
+
+  nav.innerHTML = groups.map(({ label, pages: gPages }) => `
+    <div class="sidebar-section">
+      ${label ? `<div class="sidebar-section-label">${label}</div>` : ''}
+      ${gPages.map((p) => `
+        <div class="nav-item" data-page="${p.id}" data-action="nav.go" data-tooltip="${p.label}">
+          ${ICONS[p.icon] || ''}
+          <span>${p.label}</span>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+
   byId('btn-mobile-menu').innerHTML = ICONS.menu;
   updateCollapseIcon();
 }

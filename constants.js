@@ -32,22 +32,22 @@ export const ICONS = {
 };
 
 export const PAGE_META = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { id: 'licitacoes', label: 'Licitações', icon: 'licitacoes' },
-  { id: 'contratos', label: 'Contratos', icon: 'contratos' },
-  { id: 'atas', label: 'Atas', icon: 'atas' },
-  { id: 'empenhos', label: 'Empenhos', icon: 'empenhos' },
-  { id: 'faturamento', label: 'Faturamento', icon: 'faturamento' },
-  { id: 'produtos', label: 'Produtos', icon: 'produtos' },
-  { id: 'orgaos', label: 'Órgãos', icon: 'orgaos' },
-  { id: 'concorrentes', label: 'Concorrentes', icon: 'concorrentes' },
-  { id: 'parceiros', label: 'Parceiros', icon: 'parceiros' },
-  { id: 'certidoes', label: 'Certidões', icon: 'certidoes' },
-  { id: 'documentos', label: 'Documentos', icon: 'documentos' },
-  { id: 'agenda', label: 'Agenda', icon: 'agenda' },
-  { id: 'relatorios', label: 'Relatórios', icon: 'relatorios' },
-  { id: 'configuracoes', label: 'Configurações', icon: 'configuracoes' },
-  { id: 'usuarios', label: 'Usuários', icon: 'usuarios', adminOnly: true },
+  { id: 'dashboard',     label: 'Dashboard',     icon: 'dashboard',     group: 'VISÃO GERAL' },
+  { id: 'licitacoes',    label: 'Licitações',    icon: 'licitacoes',    group: 'CICLO LICITATÓRIO' },
+  { id: 'contratos',     label: 'Contratos',     icon: 'contratos',     group: 'CICLO LICITATÓRIO' },
+  { id: 'atas',          label: 'Atas',          icon: 'atas',          group: 'CICLO LICITATÓRIO' },
+  { id: 'empenhos',      label: 'Empenhos',      icon: 'empenhos',      group: 'CICLO LICITATÓRIO' },
+  { id: 'faturamento',   label: 'Faturamento',   icon: 'faturamento',   group: 'CICLO LICITATÓRIO' },
+  { id: 'produtos',      label: 'Produtos',      icon: 'produtos',      group: 'CADASTROS' },
+  { id: 'orgaos',        label: 'Órgãos',        icon: 'orgaos',        group: 'CADASTROS' },
+  { id: 'concorrentes',  label: 'Concorrentes',  icon: 'concorrentes',  group: 'CADASTROS' },
+  { id: 'parceiros',     label: 'Parceiros',     icon: 'parceiros',     group: 'CADASTROS' },
+  { id: 'certidoes',     label: 'Certidões',     icon: 'certidoes',     group: 'CADASTROS' },
+  { id: 'documentos',    label: 'Documentos',    icon: 'documentos',    group: 'CADASTROS' },
+  { id: 'agenda',        label: 'Agenda',        icon: 'agenda',        group: 'GESTÃO' },
+  { id: 'relatorios',    label: 'Relatórios',    icon: 'relatorios',    group: 'GESTÃO' },
+  { id: 'configuracoes', label: 'Configurações', icon: 'configuracoes', group: 'GESTÃO' },
+  { id: 'usuarios',      label: 'Usuários',      icon: 'usuarios',      group: 'GESTÃO', adminOnly: true },
 ];
 
 export const STATUS_LICITACAO = ['Em disputa', 'Ganhou', 'Declinou', 'Desclassificado', 'Fracassado', 'Revogado'];
