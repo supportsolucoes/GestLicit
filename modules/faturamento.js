@@ -10,6 +10,7 @@ let empenhosLite = [];
 let entregasComItem = [];
 let recebimentosEdicao = [];
 let editingFaturamentoId = null;
+let editingArquivoFile = null;
 let pageContainer = null;
 let activeFilter = null;
 
@@ -91,6 +92,7 @@ async function abrirFormulario(faturamentoId) {
     empenho_id: '', numero_fatura: '', data_emissao: todayISO(), valor_fatura: '', situacao: 'Aberta', observacoes: '',
   };
   recebimentosEdicao = [];
+  editingArquivoFile = null;
 
   if (!empenhosLite.length) empenhosLite = await Service.listEmpenhos();
   entregasComItem = await Service.listAllEntregasComItem();
@@ -118,6 +120,11 @@ async function abrirFormulario(faturamentoId) {
         <div class="form-field"><label>Data de Emissão</label><input type="date" id="f-data-emissao" value="${fatura.data_emissao || ''}" /></div>
         <div class="form-field"><label>Valor da Fatura *</label><div class="input-currency-wrap"><input required id="f-valor-fatura" value="${formatMoneyInputValue(fatura.valor_fatura)}" placeholder="0,00" /></div></div>
         <div class="form-field"><label>Situação</label><select id="f-situacao">${SITUACOES_FATURAMENTO.map((s) => `<option ${s === fatura.situacao ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+        <div class="form-field span-2">
+          <label>Arquivo da Nota Fiscal</label>
+          <input type="file" id="f-arquivo" />
+          ${fatura.arquivo_url ? `<button type="button" class="link-btn" style="margin-top:6px; text-align:left;" data-action="faturamento.verArquivo" data-url="${escapeHtml(fatura.arquivo_url)}">Ver arquivo atual</button>` : ''}
+        </div>
         <div class="form-field span-3"><label>Observações</label><textarea id="f-observacoes">${escapeHtml(fatura.observacoes || '')}</textarea></div>
       </div>
 
@@ -149,6 +156,7 @@ async function abrirFormulario(faturamentoId) {
   });
 
   byId('f-empenho-id').addEventListener('change', renderEntregasChecklist);
+  byId('f-arquivo').addEventListener('change', (e) => { editingArquivoFile = e.target.files?.[0] || null; });
   renderEntregasChecklist();
   if (faturamentoId) renderRecebimentosSection();
 }
@@ -287,6 +295,15 @@ async function excluirRecebimentoHandler(target) {
   }
 }
 
+async function verArquivo(target) {
+  try {
+    const url = await Service.getSignedUrl(target.dataset.url);
+    window.open(url, '_blank');
+  } catch (err) {
+    showToast(err.message || 'Erro ao gerar link do arquivo.', 'error');
+  }
+}
+
 async function salvar() {
   const empenhoId = byId('f-empenho-id').value;
   const numeroFatura = byId('f-numero-fatura').value.trim();
@@ -329,6 +346,11 @@ async function salvar() {
       faturaId = created.id;
     }
 
+    if (editingArquivoFile) {
+      const path = await Service.uploadFaturamentoArquivo(editingArquivoFile, faturaId);
+      await Service.updateFaturamento(faturaId, { arquivo_url: path });
+    }
+
     const previamenteLigadas = entregasComItem
       .filter((e) => editingFaturamentoId !== null && e.faturamento_id === editingFaturamentoId)
       .map((e) => e.id);
@@ -367,4 +389,5 @@ export const actions = {
   'faturamento.excluirRecebimento': (target) => excluirRecebimentoHandler(target),
   'faturamento.salvar': () => salvar(),
   'faturamento.limparFiltro': () => limparFiltro(),
+  'faturamento.verArquivo': (target) => verArquivo(target),
 };

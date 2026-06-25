@@ -889,3 +889,13 @@ create trigger set_updated_at before update on public.faturamentos
   for each row execute function public.set_updated_at();
 
 notify pgrst, 'reload schema';
+
+-- ============================================================
+-- ALTERAÇÕES v1.12 — Anexo da Nota Fiscal no Faturamento
+-- Aditivo e idempotente: seguro rodar de novo sobre o banco já em produção.
+-- Mesmo padrão de anexo já usado em Contrato e Empenho (bucket "documentos",
+-- pasta própria, signed URL).
+-- ============================================================
+alter table public.faturamentos add column if not exists arquivo_url text;
+
+notify pgrst, 'reload schema';

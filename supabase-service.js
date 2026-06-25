@@ -460,3 +460,11 @@ export async function uploadEmpenhoArquivo(file, empenhoId) {
   if (error) throw error;
   return path;
 }
+
+export async function uploadFaturamentoArquivo(file, faturamentoId) {
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `Faturamento/${Date.now()}_${safeName}`;
+  const { error } = await sb().storage.from(DOCUMENTOS_BUCKET).upload(path, file);
+  if (error) throw error;
+  return path;
+}
