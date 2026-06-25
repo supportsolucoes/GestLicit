@@ -406,6 +406,63 @@ a { color: var(--blue); text-decoration: none; }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
 }
 
+/* ---------- kpi-grid variantes ---------- */
+.kpi-grid.kpi-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.kpi-grid.kpi-grid-4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 900px) {
+  .kpi-grid.kpi-grid-3,
+  .kpi-grid.kpi-grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 520px) {
+  .kpi-grid.kpi-grid-3,
+  .kpi-grid.kpi-grid-4 { grid-template-columns: 1fr; }
+}
+
+/* ---------- Relatórios ---------- */
+.rel-section { margin-bottom: 32px; }
+.rel-section-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  border-bottom: 1px solid var(--gray-200); padding-bottom: 10px; margin-bottom: 16px;
+}
+.rel-section-title {
+  font-size: 11px; font-weight: 700; color: var(--gray-500);
+  text-transform: uppercase; letter-spacing: .07em;
+}
+.rel-section-count { font-size: 12px; color: var(--gray-400); }
+.rel-empty { color: var(--gray-400); font-size: 13px; text-align: center; padding: 20px 0; }
+
+/* top 5 órgãos */
+.rel-top5 { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.rel-top5-row { display: flex; align-items: center; gap: 10px; }
+.rel-top5-rank { width: 16px; font-size: 11px; font-weight: 700; color: var(--gray-400); text-align: right; flex-shrink: 0; }
+.rel-top5-label { flex: 1; min-width: 0; font-size: 13px; color: var(--gray-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rel-top5-bar-wrap { width: 70px; height: 5px; background: var(--gray-200); border-radius: 3px; flex-shrink: 0; }
+.rel-top5-bar { height: 5px; background: var(--blue); border-radius: 3px; transition: width 400ms ease; }
+.rel-top5-value { font-size: 12px; font-weight: 600; color: var(--gray-700); white-space: nowrap; min-width: 60px; text-align: right; }
+
+/* barras de progresso de faturas */
+.rel-prog-list { display: flex; flex-direction: column; gap: 12px; }
+.rel-prog-row { }
+.rel-prog-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+.rel-prog-title { font-size: 13px; color: var(--gray-800); font-weight: 500; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rel-prog-meta { font-size: 12px; color: var(--gray-500); white-space: nowrap; flex-shrink: 0; }
+.rel-prog-bar-wrap { height: 6px; background: var(--gray-200); border-radius: 3px; }
+.rel-prog-bar { height: 6px; border-radius: 3px; transition: width 400ms ease; }
+
+/* cards de exportação */
+.rel-export-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.rel-export-card {
+  background: var(--white); border: 1px solid var(--gray-200);
+  border-radius: var(--radius); padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.rel-export-title { font-size: 14px; font-weight: 600; color: var(--gray-900); }
+.rel-export-desc { font-size: 12px; color: var(--gray-500); flex: 1; line-height: 1.5; }
+.rel-export-actions {
+  display: flex; gap: 8px; margin-top: 12px;
+  padding-top: 12px; border-top: 1px solid var(--gray-100);
+}
+
 /* ---------- Tables ---------- */
 .table-wrap { overflow-x: auto; }
 
