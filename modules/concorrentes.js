@@ -124,10 +124,11 @@ async function analisarCnpj(cnpjDigits) {
 
 function renderResultado() {
   const wrap = byId('analise-resultado');
-  const { empresa, contratos, totalContratos, certidoes } = ultimaAnalise;
+  const { cnpj, empresa, contratos, totalContratos, certidoes } = ultimaAnalise;
 
-  if (empresa.erro) {
-    wrap.innerHTML = renderEmptyState(`Não foi possível consultar os dados da empresa: ${escapeHtml(empresa.erro)}`);
+  // Só aborta se a Receita Federal falhou E não há nenhum dado do PNCP
+  if (empresa.erro && !contratos.length) {
+    wrap.innerHTML = renderEmptyState(`Não foi possível consultar os dados: ${escapeHtml(empresa.erro)}`);
     return;
   }
 
@@ -172,10 +173,12 @@ function renderResultado() {
   const maxUf = top5Ufs[0]?.valor || 1;
 
   // ── HTML ────────────────────────────────────────────────────────────────
+  const nomeEmpresa = empresa.razao_social || (empresa.erro ? `CNPJ ${cnpj}` : cnpj);
+
   wrap.innerHTML = `
     <div class="conc-result-header">
       <div>
-        <div class="conc-result-nome">${escapeHtml(empresa.razao_social || empresa.cnpj || '-')}</div>
+        <div class="conc-result-nome">${escapeHtml(nomeEmpresa)}</div>
         ${empresa.nome_fantasia ? `<div class="conc-result-fantasia">${escapeHtml(empresa.nome_fantasia)}</div>` : ''}
       </div>
       <button type="button" class="btn btn-ghost btn-sm" data-action="concorrentes.novaConsulta">${ICONS.plus} Nova consulta</button>
@@ -274,21 +277,29 @@ function renderResultado() {
 
     <div class="info-section" style="margin-top:18px;">
       <div class="info-section-title">Dados da empresa</div>
-      <div class="info-grid">
-        <div class="info-field"><label>CNPJ</label><div>${escapeHtml(empresa.cnpj || '-')}</div></div>
-        <div class="info-field"><label>Situação</label><div>${badge(empresa.descricao_situacao_cadastral || '-', empresa.descricao_situacao_cadastral === 'ATIVA' ? 'success' : 'danger')}</div></div>
-        <div class="info-field"><label>Porte</label><div>${escapeHtml(empresa.porte || '-')}</div></div>
-        <div class="info-field"><label>Capital social</label><div>${formatCurrency(empresa.capital_social)}</div></div>
-        <div class="info-field"><label>Natureza jurídica</label><div>${escapeHtml(empresa.natureza_juridica || '-')}</div></div>
-        <div class="info-field"><label>Simples Nacional</label><div>${empresa.opcao_pelo_simples ? badge('Optante', 'success') : badge('Não optante', 'muted')}</div></div>
-        <div class="info-field"><label>Início de atividade</label><div>${formatDate(empresa.data_inicio_atividade)}</div></div>
-        <div class="info-field span-2"><label>Endereço</label><div>${escapeHtml([empresa.logradouro, empresa.numero, empresa.complemento, empresa.bairro, empresa.municipio, empresa.uf].filter(Boolean).join(', ') || '-')}</div></div>
-        <div class="info-field span-2"><label>Atividade principal</label><div>${escapeHtml(empresa.cnae_fiscal_descricao || '-')}</div></div>
-        ${empresa.ddd_telefone_1 ? `<div class="info-field"><label>Telefone</label><div>${escapeHtml(empresa.ddd_telefone_1)}</div></div>` : ''}
-        ${empresa.email ? `<div class="info-field"><label>E-mail</label><div>${escapeHtml(empresa.email)}</div></div>` : ''}
-      </div>
+      ${empresa.erro ? `
+        <div class="conc-certidoes-banner conc-certidoes-banner--warning" style="margin-top:8px;">
+          ${ICONS.bell}
+          <div><strong>Receita Federal indisponível</strong><p>${escapeHtml(empresa.erro)} — tente novamente em alguns instantes.</p></div>
+        </div>
+      ` : `
+        <div class="info-grid">
+          <div class="info-field"><label>CNPJ</label><div>${escapeHtml(empresa.cnpj || '-')}</div></div>
+          <div class="info-field"><label>Situação</label><div>${badge(empresa.descricao_situacao_cadastral || '-', empresa.descricao_situacao_cadastral === 'ATIVA' ? 'success' : 'danger')}</div></div>
+          <div class="info-field"><label>Porte</label><div>${escapeHtml(empresa.porte || '-')}</div></div>
+          <div class="info-field"><label>Capital social</label><div>${formatCurrency(empresa.capital_social)}</div></div>
+          <div class="info-field"><label>Natureza jurídica</label><div>${escapeHtml(empresa.natureza_juridica || '-')}</div></div>
+          <div class="info-field"><label>Simples Nacional</label><div>${empresa.opcao_pelo_simples ? badge('Optante', 'success') : badge('Não optante', 'muted')}</div></div>
+          <div class="info-field"><label>Início de atividade</label><div>${formatDate(empresa.data_inicio_atividade)}</div></div>
+          <div class="info-field span-2"><label>Endereço</label><div>${escapeHtml([empresa.logradouro, empresa.numero, empresa.complemento, empresa.bairro, empresa.municipio, empresa.uf].filter(Boolean).join(', ') || '-')}</div></div>
+          <div class="info-field span-2"><label>Atividade principal</label><div>${escapeHtml(empresa.cnae_fiscal_descricao || '-')}</div></div>
+          ${empresa.ddd_telefone_1 ? `<div class="info-field"><label>Telefone</label><div>${escapeHtml(empresa.ddd_telefone_1)}</div></div>` : ''}
+          ${empresa.email ? `<div class="info-field"><label>E-mail</label><div>${escapeHtml(empresa.email)}</div></div>` : ''}
+        </div>
+      `}
     </div>
 
+    ${!empresa.erro ? `
     <div class="info-section">
       <div class="info-section-title">Quadro de sócios e administradores</div>
       ${empresa.qsa?.length ? `
@@ -302,6 +313,7 @@ function renderResultado() {
         </div>
       ` : `<p style="color:var(--gray-500); font-size:13px; margin:0;">Nenhum sócio informado.</p>`}
     </div>
+    ` : ''}
 
     <div class="card" style="margin-top:4px;">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
