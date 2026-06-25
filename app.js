@@ -131,48 +131,70 @@ function renderUserMenu() {
   `;
 }
 
+function notifKey(tipo, registroId, dataRef) {
+  return `${tipo}:${registroId}:${dataRef || ''}`;
+}
+
 async function refreshNotifications() {
   try {
-    const [atas, contratos, certidoes, eventos] = await Promise.all([
+    const [atas, contratos, certidoes, eventos, lidas] = await Promise.all([
       SupabaseService.listAtas(),
       SupabaseService.listContratos(),
       SupabaseService.Certidoes.list(),
       SupabaseService.AgendaEventos.list(),
+      SupabaseService.listNotificacoesLidas(),
     ]);
+    const lidasSet = new Set(lidas.map((l) => notifKey(l.tipo, l.registro_id, l.data_ref)));
+
     const items = [];
     atas.filter((a) => a.situacao === 'Vigente').forEach((a) => {
       const alert = alertLevel(a.vigencia_fim);
-      if (alert) items.push({ titulo: `Ata ${a.numero_ata}`, meta: `${a.orgao?.nome || 'Órgão não informado'} · vence em ${formatDate(a.vigencia_fim)}`, dias: alert.days });
+      if (alert) items.push({ tipo: 'ata', registroId: a.id, dataRef: a.vigencia_fim, titulo: `Ata ${a.numero_ata}`, meta: `${a.orgao?.nome || 'Órgão não informado'} · vence em ${formatDate(a.vigencia_fim)}`, dias: alert.days, vencido: alert.level === 'vencido' });
     });
     contratos.filter((c) => c.situacao === 'Vigente').forEach((c) => {
       const alert = alertLevel(c.vigencia_fim);
-      if (alert) items.push({ titulo: `Contrato ${c.numero_contrato}`, meta: `${c.orgao?.nome || 'Órgão não informado'} · vence em ${formatDate(c.vigencia_fim)}`, dias: alert.days });
+      if (alert) items.push({ tipo: 'contrato', registroId: c.id, dataRef: c.vigencia_fim, titulo: `Contrato ${c.numero_contrato}`, meta: `${c.orgao?.nome || 'Órgão não informado'} · vence em ${formatDate(c.vigencia_fim)}`, dias: alert.days, vencido: alert.level === 'vencido' });
     });
     certidoes.forEach((c) => {
       const alert = alertLevel(c.data_validade);
-      if (alert) items.push({ titulo: `Certidão ${c.tipo}`, meta: `vence em ${formatDate(c.data_validade)}`, dias: alert.days });
+      if (alert) items.push({ tipo: 'certidao', registroId: c.id, dataRef: c.data_validade, titulo: `Certidão ${c.tipo}`, meta: `vence em ${formatDate(c.data_validade)}`, dias: alert.days, vencido: alert.level === 'vencido' });
     });
     eventos.filter((e) => e.lembrete).forEach((e) => {
       const alert = alertLevel(e.data);
-      if (alert) items.push({ titulo: e.titulo, meta: `${e.tipo} · ${alert.level === 'vencido' ? 'já passou' : formatDate(e.data)}`, dias: alert.days });
+      if (alert) items.push({ tipo: 'agenda', registroId: e.id, dataRef: e.data, titulo: e.titulo, meta: `${e.tipo} · ${alert.level === 'vencido' ? 'já passou' : formatDate(e.data)}`, dias: alert.days, vencido: alert.level === 'vencido' });
     });
-    items.sort((a, b) => a.dias - b.dias);
 
-    byId('notif-dot').classList.toggle('hidden', items.length === 0);
+    const visiveis = items.filter((i) => i.vencido || !lidasSet.has(notifKey(i.tipo, i.registroId, i.dataRef)));
+    visiveis.sort((a, b) => a.dias - b.dias);
+
+    byId('notif-dot').classList.toggle('hidden', visiveis.length === 0);
     byId('notifications-dropdown').innerHTML = `
       <div class="dropdown-header">Alertas e lembretes</div>
       <div class="dropdown-list">
-        ${items.length
-          ? items.map((i) => `
-            <div class="dropdown-item">
-              <span class="dropdown-item-title">${i.titulo}</span>
-              <span class="dropdown-item-meta">${i.meta}</span>
+        ${visiveis.length
+          ? visiveis.map((i) => `
+            <div class="dropdown-item dropdown-item-notif">
+              <div>
+                <span class="dropdown-item-title">${i.titulo}</span>
+                <span class="dropdown-item-meta">${i.meta}</span>
+              </div>
+              <button type="button" class="icon-btn" data-action="notif.marcarLido" data-tipo="${i.tipo}" data-registro-id="${i.registroId}" data-data-ref="${i.dataRef || ''}" title="Marcar como lido">${ICONS.check}</button>
             </div>`).join('')
           : '<div class="dropdown-item"><span class="dropdown-item-meta">Nenhum vencimento ou lembrete próximo.</span></div>'}
       </div>
     `;
   } catch (err) {
     console.error('Falha ao carregar alertas', err);
+  }
+}
+
+async function marcarNotificacaoLida(target) {
+  const { tipo, registroId, dataRef } = target.dataset;
+  try {
+    await SupabaseService.marcarNotificacaoLida(currentUser()?.id, { tipo, registroId: Number(registroId), dataRef: dataRef || null });
+    await refreshNotifications();
+  } catch (err) {
+    showToast(err.message || 'Erro ao marcar como lido.', 'error');
   }
 }
 
@@ -256,6 +278,7 @@ function bindGlobalEvents() {
       navigateTo(target.dataset.page, params);
       return;
     }
+    if (action === 'notif.marcarLido') { marcarNotificacaoLida(target); return; }
     if (action === 'ui.toggleSidebar') {
       toggleSidebar();
       byId('sidebar').classList.toggle('collapsed');

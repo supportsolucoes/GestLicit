@@ -71,6 +71,24 @@ export const Profiles = makeCrud('app_profiles', 'nome');
 export const Tags = makeCrud('tags', 'nome');
 
 // ============================================================
+// Notificações lidas (dispensar alertas do sininho, por usuário)
+// ============================================================
+export async function listNotificacoesLidas() {
+  return handle(sb().from('notificacoes_lidas').select('*'));
+}
+
+export async function marcarNotificacaoLida(userId, { tipo, registroId, dataRef }) {
+  return handle(
+    sb()
+      .from('notificacoes_lidas')
+      .upsert(
+        { user_id: userId, tipo, registro_id: registroId, data_ref: dataRef || null },
+        { onConflict: 'user_id,tipo,registro_id,data_ref' }
+      )
+  );
+}
+
+// ============================================================
 // Tags de Licitação (associação N:N)
 // ============================================================
 export async function listLicitacaoTags() {

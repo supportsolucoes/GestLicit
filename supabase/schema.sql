@@ -680,6 +680,44 @@ alter table public.empenhos add column if not exists arquivo_url text;
 notify pgrst, 'reload schema';
 
 -- ============================================================
+-- ALTERAÇÕES v1.10 — "Marcar como lido" no sininho de notificações
+-- Aditivo e idempotente: seguro rodar de novo sobre o banco já em produção.
+-- Cada usuário dispensa os alertas (Ata/Contrato/Certidão vencendo, lembrete
+-- de Agenda) só para si mesmo — dispensar não afeta o que os outros usuários
+-- veem. A chave (tipo, registro_id, data_ref) é amarrada à data do alerta:
+-- se o registro for editado com uma nova data, o alerta "renasce" mesmo já
+-- tendo sido dispensado antes. Alertas já vencidos ("vencido") sempre voltam
+-- a aparecer, mesmo que tenham sido marcados como lidos — não dá pra silenciar
+-- de vez algo que já passou do prazo.
+-- ============================================================
+
+create table if not exists public.notificacoes_lidas (
+  id          bigserial primary key,
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  tipo        text not null,
+  registro_id bigint not null,
+  data_ref    date,
+  created_at  timestamptz not null default now(),
+  unique (user_id, tipo, registro_id, data_ref)
+);
+
+alter table public.notificacoes_lidas enable row level security;
+
+drop policy if exists "notificacoes_lidas_select" on public.notificacoes_lidas;
+create policy "notificacoes_lidas_select" on public.notificacoes_lidas for select to authenticated
+  using (user_id = auth.uid());
+
+drop policy if exists "notificacoes_lidas_insert" on public.notificacoes_lidas;
+create policy "notificacoes_lidas_insert" on public.notificacoes_lidas for insert to authenticated
+  with check (user_id = auth.uid());
+
+drop policy if exists "notificacoes_lidas_delete" on public.notificacoes_lidas;
+create policy "notificacoes_lidas_delete" on public.notificacoes_lidas for delete to authenticated
+  using (user_id = auth.uid());
+
+notify pgrst, 'reload schema';
+
+-- ============================================================
 -- TRIGGERS updated_at
 -- ============================================================
 do $$

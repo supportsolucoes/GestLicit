@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manual do GestLicit</title>
+<style>
+  :root {
+    --blue: #2563EB; --blue-dark: #1D4ED8; --blue-light: #EFF6FF;
+    --gray-900: #0F172A; --gray-800: #1E293B; --gray-700: #334155;
+    --gray-500: #64748B; --gray-300: #CBD5E1; --gray-200: #E2E8F0;
+    --gray-100: #F1F5F9; --gray-50: #F8FAFC; --white: #FFFFFF;
+    --success: #16A34A; --success-bg: #ECFDF5;
+    --warning: #D97706; --warning-bg: #FFFBEB;
+    --danger: #DC2626; --danger-bg: #FEF2F2;
+    --radius-sm: 8px; --radius: 12px; --radius-lg: 16px;
+    --shadow: 0 1px 2px rgba(15,23,42,.06), 0 1px 1px rgba(15,23,42,.04);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif; background: var(--gray-50); color: var(--gray-800); }
+  a { color: var(--blue); }
+
+  .layout { display: flex; min-height: 100vh; }
+
+  .toc {
+    width: 270px; flex-shrink: 0; background: var(--white); border-right: 1px solid var(--gray-200);
+    padding: 22px 14px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .toc-brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 18px; margin-bottom: 8px; border-bottom: 1px solid var(--gray-200); }
+  .toc-brand .mark { width: 32px; height: 32px; border-radius: 8px; background: var(--blue); color: var(--white); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .toc-brand strong { font-size: 15px; color: var(--gray-900); }
+  .toc-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--gray-500); margin: 16px 10px 6px; }
+  .toc a {
+    display: block; padding: 8px 10px; border-radius: var(--radius-sm); color: var(--gray-700); text-decoration: none;
+    font-size: 13.5px; font-weight: 500; margin-bottom: 1px;
+  }
+  .toc a:hover { background: var(--gray-50); }
+
+  .content { flex: 1; min-width: 0; padding: 40px 48px 100px; max-width: 880px; margin: 0 auto; }
+
+  .hero { margin-bottom: 36px; }
+  .hero h1 { font-size: 28px; margin: 0 0 8px; color: var(--gray-900); }
+  .hero p { font-size: 15px; color: var(--gray-500); margin: 0; line-height: 1.6; }
+
+  section.modulo { padding: 32px 0; border-top: 1px solid var(--gray-200); }
+  section.modulo:first-of-type { border-top: none; padding-top: 0; }
+
+  .modulo-eyebrow { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--blue); margin: 0 0 6px; }
+  section.modulo h2 { font-size: 22px; margin: 0 0 8px; color: var(--gray-900); scroll-margin-top: 24px; }
+  section.modulo > p.dek { font-size: 14.5px; color: var(--gray-500); margin: 0 0 20px; line-height: 1.6; max-width: 640px; }
+
+  .card { background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .card h3 { font-size: 14px; margin: 0 0 12px; color: var(--gray-800); }
+  .card h3 .step-no { display: inline-flex; width: 20px; height: 20px; border-radius: 50%; background: var(--blue-light); color: var(--blue-dark); font-size: 11px; align-items: center; justify-content: center; margin-right: 8px; font-weight: 700; }
+
+  dl.fields { margin: 0; }
+  dl.fields dt { font-weight: 600; font-size: 13.5px; color: var(--gray-800); margin-top: 10px; }
+  dl.fields dt:first-child { margin-top: 0; }
+  dl.fields dd { margin: 2px 0 0; font-size: 13px; color: var(--gray-500); line-height: 1.55; }
+
+  ol.passos, ul.lista { margin: 0; padding-left: 20px; font-size: 13.5px; color: var(--gray-700); line-height: 1.7; }
+  ol.passos li, ul.lista li { margin-bottom: 4px; }
+
+  .tip, .warn {
+    border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; line-height: 1.55; margin: 14px 0;
+  }
+  .tip { background: var(--success-bg); color: #166534; }
+  .warn { background: var(--warning-bg); color: #92400E; }
+  .tip strong, .warn strong { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 3px; }
+
+  .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--gray-700); margin-bottom: 22px; }
+  .flow span { background: var(--gray-100); border-radius: 999px; padding: 5px 12px; font-weight: 600; }
+  .flow .arrow { color: var(--gray-300); }
+
+  code { background: var(--gray-100); border-radius: 4px; padding: 1px 5px; font-size: 12.5px; }
+
+  @media (max-width: 880px) {
+    .toc { display: none; }
+    .content { padding: 28px 20px 80px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <nav class="toc">
+    <div class="toc-brand"><div class="mark">GL</div><strong>GestLicit</strong></div>
+
+    <div class="toc-group-label">Visão geral</div>
+    <a href="#intro">Como o sistema funciona</a>
+    <a href="#dashboard">Dashboard</a>
+
+    <div class="toc-group-label">Ciclo licitatório</div>
+    <a href="#licitacoes">Licitações</a>
+    <a href="#contratos">Contratos</a>
+    <a href="#atas">Atas</a>
+    <a href="#empenhos">Empenhos</a>
+
+    <div class="toc-group-label">Cadastros de apoio</div>
+    <a href="#produtos">Produtos</a>
+    <a href="#orgaos">Órgãos</a>
+    <a href="#concorrentes">Concorrentes</a>
+    <a href="#parceiros">Parceiros</a>
+
+    <div class="toc-group-label">Controle e prazos</div>
+    <a href="#certidoes">Certidões</a>
+    <a href="#documentos">Documentos</a>
+    <a href="#agenda">Agenda</a>
+    <a href="#notificacoes">Sininho de alertas</a>
+
+    <div class="toc-group-label">Gestão</div>
+    <a href="#relatorios">Relatórios</a>
+    <a href="#usuarios">Usuários</a>
+    <a href="#configuracoes">Configurações</a>
+  </nav>
+
+  <main class="content">
+
+    <div class="hero">
+      <h1>Manual do GestLicit</h1>
+      <p>Guia completo de uso do sistema, módulo por módulo: o que cada tela faz, o que preencher em cada campo e em que ordem fazer as coisas. Sirva-se conforme a dúvida — não precisa ler tudo de uma vez.</p>
+    </div>
+
+    <section class="modulo" id="intro">
+      <div class="modulo-eyebrow">Comece por aqui</div>
+      <h2>Como o sistema funciona</h2>
+      <p class="dek">O GestLicit acompanha uma licitação do início ao fim, do ponto de vista de quem participa (fornecedor), não do órgão público. Os módulos do menu seguem a ordem real do processo:</p>
+
+      <div class="flow">
+        <span>Licitação</span><span class="arrow">→</span>
+        <span>Contrato e/ou Ata</span><span class="arrow">→</span>
+        <span>Empenho</span><span class="arrow">→</span>
+        <span>Entregas</span>
+      </div>
+
+      <div class="card">
+        <h3>O que é cada etapa, em uma frase</h3>
+        <dl class="fields">
+          <dt>Licitação</dt><dd>O processo em si: o edital, os itens disputados, a precificação e o resultado (ganhou ou não).</dd>
+          <dt>Contrato</dt><dd>O documento formal assinado depois de ganhar — usado por órgãos que contratam por contrato.</dd>
+          <dt>Ata</dt><dd>O registro de preço ganho — usado quando o órgão compra aos poucos, ao longo do tempo, dentro de um limite.</dd>
+          <dt>Empenho</dt><dd>Cada "pedido de compra" oficial que o órgão emite, puxando de uma Ata e/ou de um Contrato (ou direto, sem nenhum dos dois).</dd>
+          <dt>Entrega</dt><dd>O que de fato foi entregue de cada Empenho, lançado dentro da própria tela de Empenho.</dd>
+        </dl>
+      </div>
+
+      <div class="tip">
+        <strong>Por que isso importa</strong>
+        Uma mesma licitação pode gerar <em>só</em> um Contrato, <em>só</em> uma Ata, os dois, ou nenhum (se foi perdida). Não force o preenchimento de uma etapa que não existe no seu processo — o sistema não obriga isso.
+      </div>
+
+      <div class="tip">
+        <strong>Navegação entre módulos relacionados</strong>
+        Dentro do Contrato, da Ata e do Empenho existem botões no topo do formulário (ex.: "Ver Atas do Órgão", "Ver Ata vinculada") que levam direto para os registros relacionados, sem precisar procurar manualmente.
+      </div>
+    </section>
+
+    <section class="modulo" id="dashboard">
+      <div class="modulo-eyebrow">Visão geral</div>
+      <h2>Dashboard</h2>
+      <p class="dek">Primeira tela ao entrar. Não tem nada para preencher — é um resumo automático do que já foi cadastrado.</p>
+      <div class="card">
+        <dl class="fields">
+          <dt>Taxa de êxito</dt><dd>% de itens de licitação com resultado "Ganhou" sobre o total de itens já decididos (ignora os que ainda estão "Em disputa").</dd>
+          <dt>Valor ganho</dt><dd>Soma do valor final × quantidade de todos os itens com status "Ganhou".</dd>
+          <dt>Atas vigentes</dt><dd>Quantas Atas estão com situação "Vigente" hoje, e o valor total delas.</dd>
+          <dt>Alertas</dt><dd>Lista de Atas e Certidões perto do vencimento — mesma lógica do sininho de notificações (90/60/30/15/7 dias).</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="modulo" id="licitacoes">
+      <div class="modulo-eyebrow">Ciclo licitatório · Passo 1</div>
+      <h2>Licitações</h2>
+      <p class="dek">Cadastre cada edital que a empresa vai disputar (ou já disputou). É o módulo mais completo do sistema — cobre desde o recebimento do edital até o resultado final.</p>
+
+      <div class="card">
+        <h3><span class="step-no">1</span>Dados gerais do edital</h3>
+        <dl class="fields">
+          <dt>Nº do Pregão *</dt><dd>Obrigatório. O número que identifica o processo (ex.: PE 042/2026).</dd>
+          <dt>Nº do Processo</dt><dd>Número do processo administrativo do órgão, se diferente do número do pregão.</dd>
+          <dt>Órgão</dt><dd>Escolha o órgão comprador. Se ainda não existir, cadastre primeiro em <a href="#orgaos">Órgãos</a> — o seletor só lista quem já está cadastrado.</dd>
+          <dt>UF / Modalidade / Modo de Disputa</dt><dd>Dados do edital. "Modalidade" é normalmente Pregão Eletrônico.</dd>
+          <dt>Valor Total Estimado</dt><dd>O valor estimado pelo órgão no edital. Deixe vazio se o edital marcar o valor como sigiloso.</dd>
+          <dt>Registro de Preço?</dt><dd>Marque "Sim" se o edital for para formar uma Ata de Registro de Preço (compra recorrente), e não um contrato fechado de uma vez.</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="step-no">2</span>Datas, prazos e pregoeiro</h3>
+        <dl class="fields">
+          <dt>Abertura / Data e hora da Sessão Pública</dt><dd>Quando o pregão acontece. Esses dois campos alimentam os lembretes da <a href="#agenda">Agenda</a> e o sininho de notificações.</dd>
+          <dt>Validade da Proposta / Prazo de Entrega / Prazo de Pagamento</dt><dd>Texto livre (ex.: "60 dias") — não precisam ser número puro.</dd>
+          <dt>Nome / Telefone / Email do Pregoeiro</dt><dd>Contato de quem conduz a sessão, para tirar dúvida durante a disputa.</dd>
+          <dt>Endereços</dt><dd>Campo livre para endereços de entrega ou retirada citados no edital.</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="step-no">3</span>Itens do edital e precificação</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Clique em "Adicionar item" para cada item do edital que a empresa vai disputar.</p>
+        <dl class="fields">
+          <dt>Produto</dt><dd>Selecione um produto já cadastrado em <a href="#produtos">Produtos</a> — é obrigatório, não existe opção de digitar o nome livremente. Ao escolher, o sistema já traz o custo e o fabricante cadastrados.</dd>
+          <dt>Quantidade</dt><dd>Quantidade do item pedida no edital.</dd>
+          <dt>Valor de Referência</dt><dd>O valor estimado do edital para aquele item específico. Deixe vazio se for sigiloso.</dd>
+          <dt>Custo Unitário</dt><dd>Vem do cadastro do produto, mas pode ser ajustado aqui se o custo mudou.</dd>
+          <dt>Margem (%)</dt><dd>Sua margem de lucro desejada. O <strong>Valor Mínimo</strong> é calculado automaticamente: custo × (1 + margem/100).</dd>
+          <dt>Valor Inicial</dt><dd>O valor que a empresa vai digitar na sessão para abrir o lance — você escolhe livremente, geralmente acima do Valor Mínimo.</dd>
+        </dl>
+        <div class="warn"><strong>Atenção</strong>O sistema bloqueia salvar a licitação se algum item não tiver produto selecionado.</div>
+      </div>
+
+      <div class="card">
+        <h3><span class="step-no">4</span>Depois de salvar: tags, lembretes e resultado</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">A listagem de Licitações mostra cada uma como um cartão. Dentro do cartão:</p>
+        <dl class="fields">
+          <dt>+ Atribuir tag</dt><dd>Rótulos coloridos livres (ex.: "Precificado", "Ganha") para organizar visualmente a lista. Pode criar tags novas direto ali.</dd>
+          <dt>+ Criar lembrete</dt><dd>Cria um compromisso na Agenda vinculado a esta licitação (ex.: data de impugnação, data de recurso).</dd>
+          <dt>Ver itens do edital</dt><dd>Expande o cartão e mostra os itens cadastrados, só para consulta.</dd>
+          <dt>Resultado</dt><dd>Abre um modal separado da precificação. Para cada item, preencha o <strong>Lance Final</strong> e o <strong>Valor Arrematado</strong> (o que realmente fechou, seu ou do concorrente) e marque o <strong>Resultado</strong> (Ganhou, Declinou, Desclassificado, Fracassado, Revogado). Se foi uma perda, aparecem campos extras para apontar o <strong>Concorrente Vencedor</strong> e o <strong>Motivo da perda</strong>.</dd>
+        </dl>
+      </div>
+
+      <div class="tip"><strong>Quando usar a Análise de Concorrente</strong>Antes de registrar uma perda, vale checar o CNPJ do concorrente vencedor em <a href="#concorrentes">Concorrentes → Analisar</a> para entender contra quem se está disputando.</div>
+    </section>
+
+    <section class="modulo" id="contratos">
+      <div class="modulo-eyebrow">Ciclo licitatório · Passo 2 (se houver contrato)</div>
+      <h2>Contratos</h2>
+      <p class="dek">Use este módulo quando a licitação ganha vira um contrato formal assinado (em vez de — ou além de — uma Ata).</p>
+
+      <div class="card">
+        <h3><span class="step-no">1</span>Dados do contrato</h3>
+        <dl class="fields">
+          <dt>Nº do Contrato *</dt><dd>Obrigatório.</dd>
+          <dt>Licitação relacionada *</dt><dd>Obrigatório — todo contrato precisa apontar para a licitação que o originou. Se a licitação ainda não existir, cadastre-a primeiro.</dd>
+          <dt>Órgão</dt><dd>Normalmente preenche solo ao escolher a licitação, mas pode ajustar.</dd>
+          <dt>Valor do Contrato *</dt><dd>Obrigatório — é o valor oficial assinado, que aparece na listagem (diferente da soma dos itens, que é só conferência).</dd>
+          <dt>Vigência início / fim</dt><dd>Datas que alimentam o alerta de vencimento (sininho e Dashboard).</dd>
+          <dt>Viabilidade</dt><dd>Viável / Inviável / Em análise — uso interno, sem efeito em cálculo.</dd>
+          <dt>Arquivo do Contrato</dt><dd>Envie o PDF assinado. Depois de salvo, fica disponível em "Ver arquivo atual".</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="step-no">2</span>Prazos e contato</h3>
+        <dl class="fields">
+          <dt>Prazo de Entrega / Pagamento</dt><dd>Texto livre + checkbox "Úteis" para indicar se a contagem é em dias úteis ou corridos.</dd>
+          <dt>Telefone / Email</dt><dd>Contato do órgão para tratar entregas e pagamentos.</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="step-no">3</span>Itens do contrato</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Em vez de digitar item por item, use o botão <strong>"Carregar itens da licitação"</strong>: ele traz automaticamente os itens já cadastrados na Licitação vinculada (produto, marca, modelo, quantidade e valor — usando o resultado da disputa se já existir). Depois é só ajustar o que for preciso.</p>
+        <div class="warn"><strong>Atenção</strong>Item de Contrato também exige produto cadastrado — não tem opção de texto livre.</div>
+      </div>
+
+      <div class="tip"><strong>Navegar a partir daqui</strong>Dentro do contrato salvo, use "Ver Atas do Órgão" para checar se o mesmo órgão também tem uma Ata, e "Ver Empenhos deste Contrato" para ver o que já foi empenhado contra ele.</div>
+    </section>
+
+    <section class="modulo" id="atas">
+      <div class="modulo-eyebrow">Ciclo licitatório · Passo 2 (se houver registro de preço)</div>
+      <h2>Atas</h2>
+      <p class="dek">Use quando a licitação ganha é um Registro de Preço: o órgão não compra tudo de uma vez, compra aos poucos, dentro de um limite, ao longo da vigência.</p>
+
+      <div class="card">
+        <h3><span class="step-no">1</span>Dados da Ata</h3>
+        <dl class="fields">
+          <dt>Nº da Ata *</dt><dd>Obrigatório.</dd>
+          <dt>Licitação relacionada</dt><dd>Opcional (diferente do Contrato, que exige). Vincule se quiser rastrear a origem.</dd>
+          <dt>Órgão / Data de Assinatura / Vigência início e fim / Situação / Valor Total</dt><dd>Dados de cabeçalho. A Vigência fim alimenta o alerta de vencimento.</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="step-no">2</span>Itens da Ata</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Depois de salvar o cabeçalho, abra a Ata (ícone de itens) e clique em "Adicionar item": escolha o <strong>Produto</strong> (obrigatório), a <strong>Quantidade total</strong> registrada na Ata e o <strong>Valor unitário</strong>.</p>
+      </div>
+
+      <div class="card">
+        <h3><span class="step-no">3</span>Acompanhar o saldo</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">O saldo de cada item <strong>não se digita</strong> — é calculado automaticamente a partir de todos os <a href="#empenhos">Empenhos</a> vinculados a esta Ata. A barra de progresso mostra "Empenhado X de Y". Para ver os empenhos que já consumiram o item, clique em "Empenhos vinculados".</p>
+        <div class="tip"><strong>Não existe mais lançamento manual de consumo</strong>Se a Ata foi consumida, isso se registra cadastrando um Empenho apontando para ela — não há campo para "abater saldo" direto na tela da Ata.</div>
+      </div>
+
+      <div class="tip"><strong>Navegar a partir daqui</strong>Use "Ver Contratos do Órgão" e "Ver Empenhos desta Ata" no topo da tela de detalhe para ir direto aos registros relacionados.</div>
+    </section>
+
+    <section class="modulo" id="empenhos">
+      <div class="modulo-eyebrow">Ciclo licitatório · Passo 3</div>
+      <h2>Empenhos</h2>
+      <p class="dek">Cada Empenho é um compromisso orçamentário oficial do órgão — o "pedido" formal de compra, que pode vir de uma Ata, de um Contrato, dos dois, ou ser direto (sem nenhum vínculo).</p>
+
+      <div class="card">
+        <h3><span class="step-no">1</span>Dados do empenho</h3>
+        <dl class="fields">
+          <dt>Nº do Empenho *</dt><dd>Obrigatório (ex.: 2026NE000123).</dd>
+          <dt>Ata vinculada / Contrato vinculado</dt><dd>Escolha um, o outro, os dois ou nenhum. Ao escolher um, o campo Órgão se preenche solo.</dd>
+          <dt>Valor Empenhado *</dt><dd>Obrigatório — valor total do empenho.</dd>
+          <dt>Arquivo do Empenho</dt><dd>Envie o PDF/documento oficial do empenho, se tiver.</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="step-no">2</span>Itens do empenho</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Use <strong>"Carregar itens do vínculo"</strong> para trazer automaticamente os itens da Ata ou do Contrato selecionado (o que estiver preenchido). Ajuste a <strong>Quantidade Empenhada</strong> de cada item conforme o que está sendo pedido nesta vez — não precisa ser a quantidade total da Ata/Contrato.</p>
+      </div>
+
+      <div class="card">
+        <h3><span class="step-no">3</span>Lançar entregas (só depois de salvo)</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Depois que o Empenho está salvo com itens, aparece a seção "Saldo e entregas". Para cada item, clique em "Entregas" e lance: <strong>Data</strong>, <strong>Quantidade</strong> entregue, <strong>Nota Fiscal</strong> e observação. O saldo restante (Empenhado − Entregue) é calculado solo, nunca digitado.</p>
+      </div>
+
+      <div class="tip"><strong>Navegar a partir daqui</strong>Use "Ver Ata vinculada" e "Ver Contrato vinculado" no topo do formulário (só aparecem se o respectivo vínculo estiver preenchido) para abrir direto o registro de origem.</div>
+    </section>
+
+    <section class="modulo" id="produtos">
+      <div class="modulo-eyebrow">Cadastro de apoio</div>
+      <h2>Produtos</h2>
+      <p class="dek">Catálogo de produtos da empresa. Cadastre aqui <strong>antes</strong> de criar uma Licitação, Contrato, Ata ou Empenho — todos esses módulos exigem escolher um produto já cadastrado.</p>
+      <div class="card">
+        <dl class="fields">
+          <dt>Código</dt><dd>Código interno do produto, se a empresa usa algum (ex.: código de outro sistema). Opcional.</dd>
+          <dt>Nome do Produto *</dt><dd>Obrigatório — é o que aparece nos seletores dos outros módulos.</dd>
+          <dt>Fabricante</dt><dd>Pré-preenche automaticamente a marca/fabricante quando o produto é usado num item de Contrato.</dd>
+          <dt>Preço de custo</dt><dd>Usado para calcular o Valor Mínimo na precificação da Licitação. Mantenha atualizado.</dd>
+          <dt>Nomes similares</dt><dd>Sinônimos separados por vírgula (ex.: nomes que o produto recebe em editais diferentes), só para facilitar a busca.</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="modulo" id="orgaos">
+      <div class="modulo-eyebrow">Cadastro de apoio</div>
+      <h2>Órgãos</h2>
+      <p class="dek">Prefeituras, autarquias e demais órgãos públicos com quem a empresa disputa. Cadastre antes de criar uma Licitação.</p>
+      <div class="card">
+        <dl class="fields">
+          <dt>Nome do Órgão *</dt><dd>Obrigatório.</dd>
+          <dt>CNPJ / UF / Cidade</dt><dd>Dados de identificação, usados na busca da listagem.</dd>
+          <dt>Observações</dt><dd>Texto livre — ex.: histórico de relacionamento, particularidades de pagamento.</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="modulo" id="concorrentes">
+      <div class="modulo-eyebrow">Cadastro de apoio</div>
+      <h2>Concorrentes</h2>
+      <p class="dek">Empresas concorrentes nos pregões. Além do cadastro simples, este módulo tem uma ferramenta de consulta pública por CNPJ.</p>
+      <div class="card">
+        <h3><span class="step-no">1</span>Cadastro</h3>
+        <dl class="fields">
+          <dt>Nome da Empresa *</dt><dd>Obrigatório.</dd>
+          <dt>CNPJ</dt><dd>Opcional, mas necessário se quiser usar o atalho "Analisar" na linha do concorrente.</dd>
+          <dt>Produtos/observações</dt><dd>Texto livre — anote com que produtos esse concorrente costuma vencer.</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h3><span class="step-no">2</span>Análise de Concorrente</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Digite qualquer CNPJ no campo no topo da página e clique "Analisar" (ou use o ícone de lupa numa linha já cadastrada). O sistema busca, em tempo real e sem guardar nada no banco:</p>
+        <ul class="lista">
+          <li>Dados cadastrais da Receita Federal (razão social, sócios, situação, capital social);</li>
+          <li>Contratos e empenhos públicos encontrados no Portal Nacional de Contratações Públicas (PNCP), com gráficos por modalidade e por UF;</li>
+          <li>Sanções no CEIS/CNEP do Portal da Transparência (exige configurar uma chave de API gratuita em <a href="#configuracoes">Configurações</a>).</li>
+        </ul>
+        <dl class="fields">
+          <dt>Nova consulta</dt><dd>Aparece junto ao resultado — limpa a busca para consultar outro CNPJ sem precisar rolar a tela até o topo.</dd>
+          <dt>Limpar</dt><dd>Ao lado do botão "Analisar" — limpa o campo e o resultado da tela.</dd>
+          <dt>Exportar Excel</dt><dd>Exporta a tabela de contratos/empenhos encontrados no PNCP.</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="modulo" id="parceiros">
+      <div class="modulo-eyebrow">Cadastro de apoio</div>
+      <h2>Parceiros</h2>
+      <p class="dek">Distribuidoras e revendas que representam a empresa em pregões — útil quando o item é vendido através de um parceiro, não diretamente.</p>
+      <div class="card">
+        <dl class="fields">
+          <dt>Razão Social *</dt><dd>Obrigatório.</dd>
+          <dt>CNPJ / Contato / Telefone / E-mail</dt><dd>Dados de contato comercial.</dd>
+          <dt>Prazo de entrega / pagamento</dt><dd>Mesmo padrão de Contratos: texto livre + checkbox "dias úteis".</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="modulo" id="certidoes">
+      <div class="modulo-eyebrow">Controle e prazos</div>
+      <h2>Certidões</h2>
+      <p class="dek">Documentos de regularidade fiscal e trabalhista da própria empresa (FGTS, Federal, Trabalhista etc.), exigidos para participar de pregões.</p>
+      <div class="card">
+        <dl class="fields">
+          <dt>Tipo de Certidão *</dt><dd>Obrigatório — escolha da lista (FGTS, Federal, Estadual, Municipal, Trabalhista...).</dd>
+          <dt>Número</dt><dd>Número de controle da certidão, se houver.</dd>
+          <dt>Data de emissão / validade</dt><dd>A validade alimenta o alerta de vencimento (sininho, Dashboard e Agenda).</dd>
+          <dt>Anexar arquivo</dt><dd>Envie o PDF da certidão para ter sempre à mão na hora de montar uma proposta.</dd>
+        </dl>
+        <div class="warn"><strong>Fique de olho</strong>A situação na listagem muda de "Regular" para "Vence em Xd" e depois "Vencido" automaticamente — renove antes de chegar no vermelho.</div>
+      </div>
+    </section>
+
+    <section class="modulo" id="documentos">
+      <div class="modulo-eyebrow">Controle e prazos</div>
+      <h2>Documentos</h2>
+      <p class="dek">Repositório central de arquivos — editais, propostas, atas assinadas, pareceres — sem precisar amarrar a um módulo específico.</p>
+      <div class="card">
+        <dl class="fields">
+          <dt>Categoria *</dt><dd>Classificação do arquivo, usada no filtro da listagem.</dd>
+          <dt>Referência (opcional)</dt><dd>Texto livre para lembrar a que se refere (ex.: "Pregão 042/2026").</dd>
+          <dt>Arquivo *</dt><dd>O arquivo em si — qualquer formato.</dd>
+        </dl>
+        <p style="font-size:13px; color:var(--gray-500);">Use a busca por nome de arquivo e o filtro de categoria no topo da listagem para encontrar rápido.</p>
+      </div>
+    </section>
+
+    <section class="modulo" id="agenda">
+      <div class="modulo-eyebrow">Controle e prazos</div>
+      <h2>Agenda</h2>
+      <p class="dek">Calendário de compromissos do processo licitatório. Abre direto na visão de Mês, mas também tem Semana, Dia e Lista.</p>
+      <div class="card">
+        <h3><span class="step-no">1</span>Criar um compromisso</h3>
+        <dl class="fields">
+          <dt>Título *</dt><dd>Obrigatório.</dd>
+          <dt>Tipo</dt><dd>Sessão Pública, Prazo de Recurso, Entrega, Outro etc. — define a cor no calendário.</dd>
+          <dt>Data *</dt><dd>Obrigatório.</dd>
+          <dt>Lembrete?</dt><dd>Marque para esse compromisso também aparecer no <a href="#notificacoes">sininho de notificações</a> quando a data estiver próxima.</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h3><span class="step-no">2</span>O que aparece no calendário</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Além dos compromissos criados aqui, o calendário também mostra (sem precisar cadastrar nada): vencimento de Atas vigentes, de Contratos vigentes e de Certidões — cada um com uma cor diferente. Clicar num evento de vencimento leva direto para o módulo correspondente.</p>
+      </div>
+    </section>
+
+    <section class="modulo" id="notificacoes">
+      <div class="modulo-eyebrow">Controle e prazos</div>
+      <h2>Sininho de alertas</h2>
+      <p class="dek">O ícone de sino no topo da tela mostra, num só lugar, tudo que está prestes a vencer ou que foi marcado como lembrete: Atas, Contratos e Certidões vencendo (90/60/30/15/7 dias) e lembretes de Agenda.</p>
+      <div class="card">
+        <dl class="fields">
+          <dt>Marcar como lido</dt><dd>Clique no ícone de check ao lado de qualquer alerta para dispensá-lo da lista. Isso vale só para você — outros usuários continuam vendo o alerta normalmente.</dd>
+          <dt>Alertas já vencidos</dt><dd>Itens já vencidos ("Vencido") sempre aparecem, mesmo que tenham sido marcados como lidos antes — não é possível silenciar de vez algo que já passou do prazo.</dd>
+          <dt>O alerta "volta"?</dt><dd>Sim, se a data do registro mudar (ex.: renovou a Ata com nova vigência) — aí é um alerta novo, ainda não lido.</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="modulo" id="relatorios">
+      <div class="modulo-eyebrow">Gestão</div>
+      <h2>Relatórios</h2>
+      <p class="dek">Exportações em Excel (e PDF, no caso de Resultado mensal) — não tem cadastro, só botões de exportar.</p>
+      <div class="card">
+        <dl class="fields">
+          <dt>Resultado mensal</dt><dd>Ganhou / Declinou / Desclassificado / Fracassado / Revogado, agrupado por mês, a partir da data da sessão.</dd>
+          <dt>Licitações</dt><dd>Lista completa de editais e itens disputados.</dd>
+          <dt>Atas e vencimentos</dt><dd>Atas com vigência e situação atual.</dd>
+          <dt>Certidões</dt><dd>Situação e vencimento de cada certidão da empresa.</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="modulo" id="usuarios">
+      <div class="modulo-eyebrow">Gestão · só Administrador</div>
+      <h2>Usuários</h2>
+      <p class="dek">Só quem é Administrador vê este módulo. É aqui que se cria login para a equipe — não existe mais cadastro pela tela de login.</p>
+      <div class="card">
+        <h3><span class="step-no">1</span>Criar um usuário novo</h3>
+        <dl class="fields">
+          <dt>Nome / E-mail / Senha provisória *</dt><dd>Obrigatórios. A pessoa pode trocar a senha depois de entrar (combine isso fora do sistema).</dd>
+          <dt>Perfil de acesso</dt><dd><strong>Administrador</strong> tem acesso a tudo, sem restrição. <strong>Usuário</strong> só vê as páginas marcadas abaixo.</dd>
+          <dt>Páginas liberadas</dt><dd>Só aparece para perfil "Usuário" — marque cada página do menu que essa pessoa pode acessar.</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h3><span class="step-no">2</span>Editar um usuário existente</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Clique no ícone de editar na linha do usuário para trocar nome, perfil, páginas liberadas, ou marcar como "Inativo" (sem precisar excluir o login).</p>
+      </div>
+    </section>
+
+    <section class="modulo" id="configuracoes">
+      <div class="modulo-eyebrow">Gestão</div>
+      <h2>Configurações</h2>
+      <p class="dek">Integrações externas e dados de demonstração — acessível a qualquer usuário com permissão de escrita, não só Administrador.</p>
+      <div class="card">
+        <h3><span class="step-no">1</span>Integrações</h3>
+        <dl class="fields">
+          <dt>Chave da API (Portal da Transparência)</dt><dd>Necessária para a seção de Certidões CEIS/CNEP funcionar dentro da <a href="#concorrentes">Análise de Concorrente</a>. Cadastro gratuito em <code>api.portaldatransparencia.gov.br</code>.</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h3><span class="step-no">2</span>Dados de demonstração</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Cria, com um clique, uma licitação de ponta a ponta (com o sufixo "(EXEMPLO)" no nome) para mostrar o sistema a alguém sem usar dados reais. "Remover dados de demonstração" apaga tudo de uma vez. Esta segunda ação é só para Administrador.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+</body>
+</html>
