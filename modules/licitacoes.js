@@ -142,22 +142,29 @@ function cardHtml(l) {
 
   const eventos = agendaByLicitacao.get(l.id) || [];
   const agendaHtml = eventos.length
-    ? eventos
-        .slice(0, 4)
-        .map((ev) => {
-          const dias = daysUntil(ev.data);
-          const diasLabel = dias === null ? '' : dias < 0 ? 'vencido' : dias === 0 ? 'hoje' : `restam ${dias}d`;
-          return `<div class="lic-agenda-item"><strong>${escapeHtml(ev.titulo)}</strong><span>${formatDate(ev.data)} · ${diasLabel}</span></div>`;
-        })
-        .join('')
+    ? eventos.slice(0, 4).map((ev) => {
+        const dias = daysUntil(ev.data);
+        const urgente = dias !== null && dias >= 0 && dias <= 7;
+        const vencido = dias !== null && dias < 0;
+        const diasLabel = dias === null ? '' : vencido ? 'vencido' : dias === 0 ? 'hoje' : `${dias}d`;
+        const diasColor = vencido ? 'var(--danger)' : urgente ? 'var(--warning)' : 'var(--gray-500)';
+        return `<div class="lic-agenda-item">
+          <div class="lic-agenda-dot"></div>
+          <div>
+            <strong>${escapeHtml(ev.titulo)}</strong>
+            <span>${formatDate(ev.data)}${diasLabel ? ` · <span style="color:${diasColor};font-weight:600;">${diasLabel}</span>` : ''}</span>
+          </div>
+        </div>`;
+      }).join('')
     : `<span class="lic-agenda-empty">Nenhum lembrete vinculado.</span>`;
 
   return `
     <div class="card lic-card" data-id="${l.id}">
       <div class="lic-card-head">
         <div class="lic-card-tags">
+          <span class="lic-modalidade-chip">${escapeHtml(l.modalidade)}</span>
           ${tagPills}
-          ${canWrite() ? `<button type="button" class="link-btn" data-action="licitacoes.tags" data-id="${l.id}">+ Atribuir tag</button>` : ''}
+          ${canWrite() ? `<button type="button" class="link-btn" data-action="licitacoes.tags" data-id="${l.id}">+ tag</button>` : ''}
         </div>
         <div class="row-actions">
           <button class="icon-btn" data-action="licitacoes.editar" data-id="${l.id}" title="Gerenciar">${ICONS.edit}</button>
@@ -165,23 +172,25 @@ function cardHtml(l) {
         </div>
       </div>
 
-      <h3 class="lic-card-title">${escapeHtml(l.modalidade)} ${escapeHtml(l.numero_pregao)} — ${escapeHtml(l.orgao?.nome || 'Sem órgão')}</h3>
+      <div class="lic-card-identity">
+        <h3 class="lic-card-title">${escapeHtml(l.numero_pregao)} — ${escapeHtml(l.orgao?.nome || 'Sem órgão')}</h3>
+        ${l.uf ? `<span class="lic-uf-badge">${escapeHtml(l.uf)}</span>` : ''}
+      </div>
       <p class="lic-card-objeto">${escapeHtml(l.objeto || 'Sem objeto cadastrado.')}</p>
 
       <div class="lic-card-facts">
-        <div><span>Modo de disputa</span><strong>${escapeHtml(l.modo_disputa || '-')}</strong></div>
-        <div><span>Valor total estimado</span><strong>${formatCurrency(l.valor_total_estimado)}</strong></div>
+        <div><span>Valor estimado</span><strong>${formatCurrency(l.valor_total_estimado)}</strong></div>
         <div><span>Abertura</span><strong>${formatDateTime(l.data_abertura)}</strong></div>
-        <div><span>Registro de preço</span><strong>${l.registro_preco ? 'Sim' : 'Não'}</strong></div>
-        <div><span>Estado</span><strong>${escapeHtml(l.uf || '-')}</strong></div>
+        <div><span>Modo de disputa</span><strong>${escapeHtml(l.modo_disputa || '-')}</strong></div>
+        <div><span>Reg. de preço</span><strong>${l.registro_preco ? 'Sim' : 'Não'}</strong></div>
       </div>
 
-      <div class="lic-card-status">${statusBadges || renderEmptyState('Sem itens cadastrados')}</div>
+      ${statusBadges ? `<div class="lic-items-row"><span class="lic-items-label">Itens</span>${statusBadges}</div>` : ''}
 
       <div class="lic-card-agenda">
         <div class="lic-card-agenda-head">
-          <strong>Tarefas e compromissos</strong>
-          ${canWrite() ? `<button type="button" class="link-btn" data-action="licitacoes.lembrete" data-id="${l.id}">+ Criar lembrete</button>` : ''}
+          <strong>Compromissos</strong>
+          ${canWrite() ? `<button type="button" class="link-btn" data-action="licitacoes.lembrete" data-id="${l.id}">+ Lembrete</button>` : ''}
         </div>
         <div class="lic-card-agenda-list">${agendaHtml}</div>
       </div>
@@ -189,7 +198,7 @@ function cardHtml(l) {
       <div class="lic-card-footer">
         <button class="btn btn-primary btn-sm" data-action="licitacoes.editar" data-id="${l.id}">Gerenciar</button>
         <button class="btn btn-ghost btn-sm" data-action="licitacoes.resultado" data-id="${l.id}">Resultado</button>
-        <button type="button" class="link-btn" data-action="licitacoes.toggleItens" data-id="${l.id}">Ver itens do edital</button>
+        <button type="button" class="link-btn" id="toggle-btn-${l.id}" data-action="licitacoes.toggleItens" data-id="${l.id}">↓ Ver itens</button>
       </div>
 
       <div class="lic-card-itens" id="lic-itens-${l.id}" hidden>
@@ -217,7 +226,9 @@ function cardHtml(l) {
 
 function toggleItens(target) {
   const el = byId(`lic-itens-${target.dataset.id}`);
-  if (el) el.hidden = !el.hidden;
+  if (!el) return;
+  el.hidden = !el.hidden;
+  target.textContent = el.hidden ? '↓ Ver itens' : '↑ Ocultar itens';
 }
 
 async function abrirFormulario(licitacaoId) {

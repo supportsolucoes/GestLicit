@@ -566,41 +566,73 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 }
 .link-btn:hover { color: var(--blue-dark); text-decoration: underline; }
 
-.lic-card { display: flex; flex-direction: column; gap: 14px; }
+.lic-card { display: flex; flex-direction: column; gap: 12px; }
 
 .lic-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .lic-card-tags { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
+/* Chip de modalidade */
+.lic-modalidade-chip {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 5px;
+  background: var(--gray-100); color: var(--gray-600);
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  flex-shrink: 0;
+}
+
 .tag-pill {
-  display: inline-flex; align-items: center; padding: 3px 10px;
+  display: inline-flex; align-items: center; padding: 2px 9px;
   border-radius: 999px; font-size: 11.5px; font-weight: 700;
   border: 1px solid; line-height: 1.6;
 }
 
-.lic-card-title { margin: 0; font-size: 15.5px; font-weight: 700; color: var(--gray-900); }
-.lic-card-objeto { margin: 0; color: var(--gray-500); font-size: 13px; }
-
-.lic-card-facts {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px; padding: 12px 0; border-top: 1px solid var(--gray-100); border-bottom: 1px solid var(--gray-100);
+/* Identidade do card: título + UF */
+.lic-card-identity { display: flex; align-items: baseline; gap: 8px; }
+.lic-card-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--gray-900); }
+.lic-uf-badge {
+  flex-shrink: 0; padding: 1px 7px; border-radius: 5px;
+  background: var(--gray-100); color: var(--gray-500);
+  font-size: 11px; font-weight: 700; letter-spacing: .04em;
 }
-.lic-card-facts > div { display: flex; flex-direction: column; gap: 3px; }
-.lic-card-facts span { font-size: 11.5px; color: var(--gray-500); }
-.lic-card-facts strong { font-size: 13px; color: var(--gray-800); }
+.lic-card-objeto { margin: 0; color: var(--gray-500); font-size: 13px; line-height: 1.5; }
 
-.lic-card-status { display: flex; gap: 6px; flex-wrap: wrap; }
+/* Facts: 4 itens com divisores verticais */
+.lic-card-facts {
+  display: flex; padding: 10px 0;
+  border-top: 1px solid var(--gray-100); border-bottom: 1px solid var(--gray-100);
+}
+.lic-card-facts > div {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 0 14px; border-right: 1px solid var(--gray-100);
+}
+.lic-card-facts > div:first-child { padding-left: 0; }
+.lic-card-facts > div:last-child { border-right: none; }
+.lic-card-facts span { font-size: 10.5px; color: var(--gray-500); text-transform: uppercase; letter-spacing: .04em; }
+.lic-card-facts strong { font-size: 13px; color: var(--gray-800); font-weight: 600; }
 
-.lic-card-agenda { background: var(--gray-50); border-radius: var(--radius-sm); padding: 12px 14px; }
-.lic-card-agenda-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.lic-card-agenda-head strong { font-size: 13px; color: var(--gray-800); }
-.lic-card-agenda-list { display: flex; gap: 18px; flex-wrap: wrap; }
-.lic-agenda-item { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
-.lic-agenda-item strong { color: var(--gray-700); font-weight: 600; }
-.lic-agenda-item span { color: var(--gray-500); }
+/* Linha de status dos itens */
+.lic-items-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lic-items-label { font-size: 10.5px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: .05em; }
+
+/* Agenda — sem fundo cinza */
+.lic-card-agenda { padding: 2px 0; }
+.lic-card-agenda-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.lic-card-agenda-head strong { font-size: 11px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: .05em; }
+.lic-card-agenda-list { display: flex; flex-direction: column; gap: 5px; }
+.lic-agenda-item { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; }
+.lic-agenda-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue); flex-shrink: 0; margin-top: 5px; }
+.lic-agenda-item strong { color: var(--gray-800); font-size: 13px; font-weight: 600; display: block; }
+.lic-agenda-item span { color: var(--gray-500); font-size: 12px; }
 .lic-agenda-empty { font-size: 12px; color: var(--gray-400); }
 
-.lic-card-footer { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.lic-card-itens { margin-top: -4px; }
+.lic-card-footer { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--gray-100); }
+.lic-card-itens { overflow-x: auto; }
+
+@media (max-width: 640px) {
+  .lic-card-facts { flex-wrap: wrap; }
+  .lic-card-facts > div { flex: 1 1 45%; border-right: none; padding: 4px 0; }
+}
 
 .tag-check-list { display: flex; flex-direction: column; gap: 10px; max-height: 220px; overflow-y: auto; }
 .tag-check-row { display: flex; align-items: center; gap: 10px; cursor: pointer; }
