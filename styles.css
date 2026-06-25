@@ -561,6 +561,45 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   .info-field.span-2 { grid-column: span 1; }
 }
 
+/* ---------- Análise de Concorrente ---------- */
+.conc-search-row {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  margin-top: 4px;
+}
+.conc-search-input { flex: 1; min-width: 200px; max-width: 360px; }
+
+.conc-result-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 12px; padding: 16px 0 14px; border-bottom: 1px solid var(--gray-200);
+  margin-top: 20px; flex-wrap: wrap;
+}
+.conc-result-nome { font-size: 16px; font-weight: 700; color: var(--gray-900); }
+.conc-result-fantasia { font-size: 13px; color: var(--gray-500); margin-top: 3px; }
+
+/* banner de certidões (nada consta / sanção) */
+.conc-certidoes-banner {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 14px 16px; border-radius: var(--radius); margin-bottom: 0;
+}
+.conc-certidoes-banner svg { width: 20px; height: 20px; flex-shrink: 0; margin-top: 2px; }
+.conc-certidoes-banner strong { display: block; font-size: 13.5px; margin-bottom: 3px; }
+.conc-certidoes-banner p { margin: 0; font-size: 12.5px; }
+.conc-certidoes-banner a { color: inherit; text-decoration: underline; }
+.conc-certidoes-banner--success { background: var(--success-bg); color: #15803D; }
+.conc-certidoes-banner--danger  { background: var(--danger-bg);  color: #B91C1C; }
+.conc-certidoes-banner--warning { background: var(--warning-bg); color: #92400E; }
+.conc-certidoes-banner--info    { background: var(--gray-50);    color: var(--gray-600); }
+
+/* QSA */
+.conc-qsa-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-top: 4px;
+}
+.conc-qsa-item {
+  background: var(--blue-light); border-radius: var(--radius-sm); padding: 12px 14px;
+}
+.conc-qsa-nome { font-size: 13.5px; font-weight: 600; color: var(--gray-900); }
+.conc-qsa-qual { font-size: 12px; color: var(--gray-500); margin-top: 3px; }
+
 /* ---------- Modal ---------- */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(15, 23, 42, .45);
