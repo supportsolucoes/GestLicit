@@ -66,9 +66,12 @@ async function renderPage(pageId, params) {
   byId('page-title').textContent = meta.label;
   qsa('.nav-item').forEach((el) => el.classList.toggle('active', el.dataset.page === pageId));
   const container = byId('page-container');
+  container.classList.remove('page-entering');
   setLoading(true);
   try {
     await MODULES[pageId]?.render(container, params);
+    void container.offsetWidth;
+    container.classList.add('page-entering');
   } catch (err) {
     console.error(err);
     container.innerHTML = `<div class="empty-state">Erro ao carregar a página: ${err.message || err}</div>`;

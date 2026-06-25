@@ -25,15 +25,21 @@ export async function render(container) {
       ${canWrite() ? `<button class="btn btn-primary" data-action="licitacoes.novo">${ICONS.plus}Nova Licitação</button>` : ''}
     </div>
 
-    <div class="card" style="margin-bottom:16px; display:flex; gap:12px; flex-wrap:wrap;">
-      <input type="text" id="lic-filtro-busca" placeholder="Buscar por pregão, processo ou órgão..." style="flex:1; min-width:220px; border:1px solid var(--gray-200); border-radius:8px; padding:9px 11px;" />
-      <select id="lic-filtro-status" style="border:1px solid var(--gray-200); border-radius:8px; padding:9px 11px;">
-        <option value="">Todos os status</option>
-        ${STATUS_LICITACAO.map((s) => `<option value="${s}">${s}</option>`).join('')}
-      </select>
-      <select id="lic-filtro-tag" style="border:1px solid var(--gray-200); border-radius:8px; padding:9px 11px;">
-        <option value="">Todas as tags</option>
-      </select>
+    <div class="card" style="margin-bottom:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      <div class="form-field" style="flex:1; min-width:220px; margin:0;">
+        <input type="text" id="lic-filtro-busca" placeholder="Buscar por pregão, processo ou órgão..." />
+      </div>
+      <div class="form-field" style="margin:0; min-width:160px;">
+        <select id="lic-filtro-status">
+          <option value="">Todos os status</option>
+          ${STATUS_LICITACAO.map((s) => `<option value="${s}">${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-field" style="margin:0; min-width:150px;">
+        <select id="lic-filtro-tag">
+          <option value="">Todas as tags</option>
+        </select>
+      </div>
     </div>
 
     <div id="lic-cards-container"></div>

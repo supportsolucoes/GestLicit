@@ -16,12 +16,16 @@ export async function render(container) {
       ${canWrite() ? `<button class="btn btn-primary" data-action="documentos.novo">${ICONS.plus}Enviar documento</button>` : ''}
     </div>
 
-    <div class="card" style="margin-bottom:16px; display:flex; gap:12px; flex-wrap:wrap;">
-      <input type="text" id="doc-busca" placeholder="Buscar por nome do arquivo..." style="flex:1; min-width:220px; border:1px solid var(--gray-200); border-radius:8px; padding:9px 11px;" />
-      <select id="doc-filtro-categoria" style="border:1px solid var(--gray-200); border-radius:8px; padding:9px 11px;">
-        <option value="">Todas as categorias</option>
-        ${CATEGORIAS_DOCUMENTO.map((c) => `<option value="${c}">${c}</option>`).join('')}
-      </select>
+    <div class="card" style="margin-bottom:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      <div class="form-field" style="flex:1; min-width:220px; margin:0;">
+        <input type="text" id="doc-busca" placeholder="Buscar por nome do arquivo..." />
+      </div>
+      <div class="form-field" style="margin:0; min-width:180px;">
+        <select id="doc-filtro-categoria">
+          <option value="">Todas as categorias</option>
+          ${CATEGORIAS_DOCUMENTO.map((c) => `<option value="${c}">${c}</option>`).join('')}
+        </select>
+      </div>
     </div>
 
     <div class="card table-wrap"><div id="doc-table"></div></div>

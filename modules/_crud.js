@@ -71,7 +71,9 @@ export function buildCrudModule(config) {
         ${canWrite() ? `<button class="btn btn-primary" data-action="${config.actionPrefix}.novo">${ICONS.plus}Novo</button>` : ''}
       </div>
       <div class="card" style="margin-bottom:16px;">
-        <input type="text" id="${config.actionPrefix}-busca" placeholder="Buscar..." style="width:100%; max-width:320px; border:1px solid var(--gray-200); border-radius:8px; padding:9px 11px;" />
+        <div class="form-field" style="max-width:360px; margin:0;">
+          <input type="text" id="${config.actionPrefix}-busca" placeholder="Buscar..." />
+        </div>
       </div>
       <div class="card table-wrap"><div id="${config.actionPrefix}-table"></div></div>
     `;
