@@ -74,6 +74,21 @@
 
   code { background: var(--gray-100); border-radius: 4px; padding: 1px 5px; font-size: 12.5px; }
 
+  .shot-wrap { margin: 14px 0 22px; }
+  .shot {
+    width: 100%; display: block; border: 1px solid var(--gray-200); border-radius: var(--radius);
+    box-shadow: var(--shadow); cursor: zoom-in; transition: box-shadow .15s, transform .15s;
+  }
+  .shot:hover { box-shadow: 0 8px 24px rgba(15,23,42,.12); transform: translateY(-1px); }
+  .shot-cap { font-size: 12px; color: var(--gray-500); margin: 8px 2px 0; }
+
+  .lightbox {
+    position: fixed; inset: 0; background: rgba(15,23,42,.72); display: none;
+    align-items: center; justify-content: center; padding: 40px; z-index: 50; cursor: zoom-out;
+  }
+  .lightbox.show { display: flex; }
+  .lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+
   @media (max-width: 880px) {
     .toc { display: none; }
     .content { padding: 28px 20px 80px; }
@@ -95,6 +110,7 @@
     <a href="#contratos">Contratos</a>
     <a href="#atas">Atas</a>
     <a href="#empenhos">Empenhos</a>
+    <a href="#faturamento">Faturamento</a>
 
     <div class="toc-group-label">Cadastros de apoio</div>
     <a href="#produtos">Produtos</a>
@@ -130,8 +146,12 @@
         <span>Licitação</span><span class="arrow">→</span>
         <span>Contrato e/ou Ata</span><span class="arrow">→</span>
         <span>Empenho</span><span class="arrow">→</span>
-        <span>Entregas</span>
+        <span>Entregas</span><span class="arrow">→</span>
+        <span>Faturamento</span><span class="arrow">→</span>
+        <span>Recebimentos</span>
       </div>
+
+      <div class="tip"><strong>Dica</strong>Clique em qualquer imagem deste manual para ver em tamanho maior.</div>
 
       <div class="card">
         <h3>O que é cada etapa, em uma frase</h3>
@@ -141,6 +161,8 @@
           <dt>Ata</dt><dd>O registro de preço ganho — usado quando o órgão compra aos poucos, ao longo do tempo, dentro de um limite.</dd>
           <dt>Empenho</dt><dd>Cada "pedido de compra" oficial que o órgão emite, puxando de uma Ata e/ou de um Contrato (ou direto, sem nenhum dos dois).</dd>
           <dt>Entrega</dt><dd>O que de fato foi entregue de cada Empenho, lançado dentro da própria tela de Empenho.</dd>
+          <dt>Faturamento</dt><dd>A Nota Fiscal enviada para pagamento, agrupando uma ou mais Entregas já lançadas.</dd>
+          <dt>Recebimento</dt><dd>Os pagamentos recebidos contra cada Fatura, lançados dentro da própria tela de Faturamento.</dd>
         </dl>
       </div>
 
@@ -159,6 +181,9 @@
       <div class="modulo-eyebrow">Visão geral</div>
       <h2>Dashboard</h2>
       <p class="dek">Primeira tela ao entrar. Não tem nada para preencher — é um resumo automático do que já foi cadastrado.</p>
+      <div class="shot-wrap">
+        <img class="shot" src="Imagens/manual/dashboard.png" alt="Tela do Dashboard, com indicadores, gráficos e alertas de vencimento" />
+      </div>
       <div class="card">
         <dl class="fields">
           <dt>Taxa de êxito</dt><dd>% de itens de licitação com resultado "Ganhou" sobre o total de itens já decididos (ignora os que ainda estão "Em disputa").</dd>
@@ -173,6 +198,11 @@
       <div class="modulo-eyebrow">Ciclo licitatório · Passo 1</div>
       <h2>Licitações</h2>
       <p class="dek">Cadastre cada edital que a empresa vai disputar (ou já disputou). É o módulo mais completo do sistema — cobre desde o recebimento do edital até o resultado final.</p>
+
+      <div class="shot-wrap">
+        <img class="shot" src="Imagens/manual/licitacoes_lista.png" alt="Listagem de Licitações em cartões, com tags, status e tarefas" />
+        <p class="shot-cap">Cada licitação é um cartão: tags, status, lembretes da Agenda e os botões Gerenciar / Resultado / Ver itens.</p>
+      </div>
 
       <div class="card">
         <h3><span class="step-no">1</span>Dados gerais do edital</h3>
@@ -208,6 +238,9 @@
           <dt>Valor Inicial</dt><dd>O valor que a empresa vai digitar na sessão para abrir o lance — você escolhe livremente, geralmente acima do Valor Mínimo.</dd>
         </dl>
         <div class="warn"><strong>Atenção</strong>O sistema bloqueia salvar a licitação se algum item não tiver produto selecionado.</div>
+        <div class="shot-wrap">
+          <img class="shot" src="Imagens/manual/licitacoes_modal.png" alt="Modal de cadastro da Licitação, com dados gerais e itens/precificação" />
+        </div>
       </div>
 
       <div class="card">
@@ -219,6 +252,9 @@
           <dt>Ver itens do edital</dt><dd>Expande o cartão e mostra os itens cadastrados, só para consulta.</dd>
           <dt>Resultado</dt><dd>Abre um modal separado da precificação. Para cada item, preencha o <strong>Lance Final</strong> e o <strong>Valor Arrematado</strong> (o que realmente fechou, seu ou do concorrente) e marque o <strong>Resultado</strong> (Ganhou, Declinou, Desclassificado, Fracassado, Revogado). Se foi uma perda, aparecem campos extras para apontar o <strong>Concorrente Vencedor</strong> e o <strong>Motivo da perda</strong>.</dd>
         </dl>
+        <div class="shot-wrap">
+          <img class="shot" src="Imagens/manual/licitacoes_resultado.png" alt="Modal de Resultado da disputa, separado da precificação" />
+        </div>
       </div>
 
       <div class="tip"><strong>Quando usar a Análise de Concorrente</strong>Antes de registrar uma perda, vale checar o CNPJ do concorrente vencedor em <a href="#concorrentes">Concorrentes → Analisar</a> para entender contra quem se está disputando.</div>
@@ -228,6 +264,10 @@
       <div class="modulo-eyebrow">Ciclo licitatório · Passo 2 (se houver contrato)</div>
       <h2>Contratos</h2>
       <p class="dek">Use este módulo quando a licitação ganha vira um contrato formal assinado (em vez de — ou além de — uma Ata).</p>
+
+      <div class="shot-wrap">
+        <img class="shot" src="Imagens/manual/contratos_lista.png" alt="Listagem de Contratos" />
+      </div>
 
       <div class="card">
         <h3><span class="step-no">1</span>Dados do contrato</h3>
@@ -248,6 +288,9 @@
           <dt>Prazo de Entrega / Pagamento</dt><dd>Texto livre + checkbox "Úteis" para indicar se a contagem é em dias úteis ou corridos.</dd>
           <dt>Telefone / Email</dt><dd>Contato do órgão para tratar entregas e pagamentos.</dd>
         </dl>
+        <div class="shot-wrap">
+          <img class="shot" src="Imagens/manual/contratos_modal.png" alt="Modal de cadastro do Contrato" />
+        </div>
       </div>
 
       <div class="card">
@@ -263,6 +306,10 @@
       <div class="modulo-eyebrow">Ciclo licitatório · Passo 2 (se houver registro de preço)</div>
       <h2>Atas</h2>
       <p class="dek">Use quando a licitação ganha é um Registro de Preço: o órgão não compra tudo de uma vez, compra aos poucos, dentro de um limite, ao longo da vigência.</p>
+
+      <div class="shot-wrap">
+        <img class="shot" src="Imagens/manual/atas_lista.png" alt="Listagem de Atas" />
+      </div>
 
       <div class="card">
         <h3><span class="step-no">1</span>Dados da Ata</h3>
@@ -282,6 +329,10 @@
         <h3><span class="step-no">3</span>Acompanhar o saldo</h3>
         <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">O saldo de cada item <strong>não se digita</strong> — é calculado automaticamente a partir de todos os <a href="#empenhos">Empenhos</a> vinculados a esta Ata. A barra de progresso mostra "Empenhado X de Y". Para ver os empenhos que já consumiram o item, clique em "Empenhos vinculados".</p>
         <div class="tip"><strong>Não existe mais lançamento manual de consumo</strong>Se a Ata foi consumida, isso se registra cadastrando um Empenho apontando para ela — não há campo para "abater saldo" direto na tela da Ata.</div>
+        <div class="shot-wrap">
+          <img class="shot" src="Imagens/manual/atas_detalhe.png" alt="Tela de detalhe da Ata, com situação, % empenhado e saldo por item" />
+          <p class="shot-cap">A tela de detalhe (não é um modal) mostra a situação, o valor total, o % já empenhado e o saldo de cada item.</p>
+        </div>
       </div>
 
       <div class="tip"><strong>Navegar a partir daqui</strong>Use "Ver Contratos do Órgão" e "Ver Empenhos desta Ata" no topo da tela de detalhe para ir direto aos registros relacionados.</div>
@@ -291,6 +342,10 @@
       <div class="modulo-eyebrow">Ciclo licitatório · Passo 3</div>
       <h2>Empenhos</h2>
       <p class="dek">Cada Empenho é um compromisso orçamentário oficial do órgão — o "pedido" formal de compra, que pode vir de uma Ata, de um Contrato, dos dois, ou ser direto (sem nenhum vínculo).</p>
+
+      <div class="shot-wrap">
+        <img class="shot" src="Imagens/manual/empenhos_lista.png" alt="Listagem de Empenhos, com origem, valor e % entregue" />
+      </div>
 
       <div class="card">
         <h3><span class="step-no">1</span>Dados do empenho</h3>
@@ -305,6 +360,9 @@
       <div class="card">
         <h3><span class="step-no">2</span>Itens do empenho</h3>
         <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Use <strong>"Carregar itens do vínculo"</strong> para trazer automaticamente os itens da Ata ou do Contrato selecionado (o que estiver preenchido). Ajuste a <strong>Quantidade Empenhada</strong> de cada item conforme o que está sendo pedido nesta vez — não precisa ser a quantidade total da Ata/Contrato.</p>
+        <div class="shot-wrap">
+          <img class="shot" src="Imagens/manual/empenhos_modal.png" alt="Modal de cadastro do Empenho, com vínculo e itens" />
+        </div>
       </div>
 
       <div class="card">
@@ -312,13 +370,48 @@
         <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Depois que o Empenho está salvo com itens, aparece a seção "Saldo e entregas". Para cada item, clique em "Entregas" e lance: <strong>Data</strong>, <strong>Quantidade</strong> entregue, <strong>Nota Fiscal</strong> e observação. O saldo restante (Empenhado − Entregue) é calculado solo, nunca digitado.</p>
       </div>
 
-      <div class="tip"><strong>Navegar a partir daqui</strong>Use "Ver Ata vinculada" e "Ver Contrato vinculado" no topo do formulário (só aparecem se o respectivo vínculo estiver preenchido) para abrir direto o registro de origem.</div>
+      <div class="tip"><strong>Navegar a partir daqui</strong>Use "Ver Ata vinculada" e "Ver Contrato vinculado" no topo do formulário (só aparecem se o respectivo vínculo estiver preenchido) para abrir direto o registro de origem. O botão "Ver Faturamento(s)" leva para as faturas já lançadas contra este Empenho.</div>
+    </section>
+
+    <section class="modulo" id="faturamento">
+      <div class="modulo-eyebrow">Ciclo licitatório · Passo 4</div>
+      <h2>Faturamento</h2>
+      <p class="dek">Depois que uma Entrega do Empenho foi feita (com sua Nota Fiscal), registre aqui a Fatura enviada para pagamento e acompanhe os Recebimentos contra ela.</p>
+
+      <div class="shot-wrap">
+        <img class="shot" src="Imagens/manual/faturamento_lista.png" alt="Listagem de Faturamento, com situação e % recebido" />
+        <p class="shot-cap">Situação (Aberta / Paga parcialmente / Paga) e % recebido são sempre calculados a partir dos Recebimentos — nunca digitados.</p>
+      </div>
+
+      <div class="card">
+        <h3><span class="step-no">1</span>Criar uma Fatura</h3>
+        <dl class="fields">
+          <dt>Empenho *</dt><dd>Obrigatório. Depois de salva a fatura, esse campo trava — para não invalidar o vínculo com as entregas já marcadas.</dd>
+          <dt>Entregas incluídas nesta fatura</dt><dd>Marque uma ou mais Entregas já lançadas (com Nota Fiscal) daquele Empenho. Uma Entrega só pode estar em uma Fatura por vez — as que já foram faturadas em outra fatura não aparecem na lista.</dd>
+          <dt>Usar valor sugerido</dt><dd>Preenche o campo "Valor da Fatura" com a soma (quantidade × valor unitário) das entregas marcadas. É só uma sugestão — o valor final pode ser ajustado livremente.</dd>
+          <dt>Nº da Fatura/NF *</dt><dd>Obrigatório.</dd>
+          <dt>Arquivo da Nota Fiscal</dt><dd>Envie o PDF/XML da nota, se tiver.</dd>
+        </dl>
+        <div class="shot-wrap">
+          <img class="shot" src="Imagens/manual/faturamento_modal.png" alt="Modal de cadastro da Fatura, com checklist de entregas e recebimentos" />
+        </div>
+      </div>
+
+      <div class="card">
+        <h3><span class="step-no">2</span>Lançar Recebimentos</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Depois que a Fatura está salva, abre a seção "Recebimentos" dentro do mesmo modal. Lance cada pagamento recebido (data, valor, forma) — pode ser parcelado em vários lançamentos. O saldo a receber e a situação da fatura são recalculados automaticamente a cada lançamento.</p>
+      </div>
+
+      <div class="tip"><strong>Navegar a partir daqui</strong>Use "Ver Empenho vinculado" no topo do modal da Fatura para voltar direto ao Empenho de origem.</div>
     </section>
 
     <section class="modulo" id="produtos">
       <div class="modulo-eyebrow">Cadastro de apoio</div>
       <h2>Produtos</h2>
       <p class="dek">Catálogo de produtos da empresa. Cadastre aqui <strong>antes</strong> de criar uma Licitação, Contrato, Ata ou Empenho — todos esses módulos exigem escolher um produto já cadastrado.</p>
+      <div class="shot-wrap">
+        <img class="shot" src="Imagens/manual/produtos_lista.png" alt="Listagem de Produtos" />
+      </div>
       <div class="card">
         <dl class="fields">
           <dt>Código</dt><dd>Código interno do produto, se a empresa usa algum (ex.: código de outro sistema). Opcional.</dd>
@@ -334,6 +427,9 @@
       <div class="modulo-eyebrow">Cadastro de apoio</div>
       <h2>Órgãos</h2>
       <p class="dek">Prefeituras, autarquias e demais órgãos públicos com quem a empresa disputa. Cadastre antes de criar uma Licitação.</p>
+      <div class="shot-wrap">
+        <img class="shot" src="Imagens/manual/orgaos_lista.png" alt="Listagem de Órgãos" />
+      </div>
       <div class="card">
         <dl class="fields">
           <dt>Nome do Órgão *</dt><dd>Obrigatório.</dd>
@@ -347,6 +443,9 @@
       <div class="modulo-eyebrow">Cadastro de apoio</div>
       <h2>Concorrentes</h2>
       <p class="dek">Empresas concorrentes nos pregões. Além do cadastro simples, este módulo tem uma ferramenta de consulta pública por CNPJ.</p>
+      <div class="shot-wrap">
+        <img class="shot" src="Imagens/manual/concorrentes_lista.png" alt="Listagem de Concorrentes e campo de Análise de Concorrente" />
+      </div>
       <div class="card">
         <h3><span class="step-no">1</span>Cadastro</h3>
         <dl class="fields">
@@ -375,6 +474,9 @@
       <div class="modulo-eyebrow">Cadastro de apoio</div>
       <h2>Parceiros</h2>
       <p class="dek">Distribuidoras e revendas que representam a empresa em pregões — útil quando o item é vendido através de um parceiro, não diretamente.</p>
+      <div class="shot-wrap">
+        <img class="shot" src="Imagens/manual/parceiros_lista.png" alt="Listagem de Parceiros" />
+      </div>
       <div class="card">
         <dl class="fields">
           <dt>Razão Social *</dt><dd>Obrigatório.</dd>
@@ -388,6 +490,9 @@
       <div class="modulo-eyebrow">Controle e prazos</div>
       <h2>Certidões</h2>
       <p class="dek">Documentos de regularidade fiscal e trabalhista da própria empresa (FGTS, Federal, Trabalhista etc.), exigidos para participar de pregões.</p>
+      <div class="shot-wrap">
+        <img class="shot" src="Imagens/manual/certidoes_lista.png" alt="Listagem de Certidões, com situação de vencimento" />
+      </div>
       <div class="card">
         <dl class="fields">
           <dt>Tipo de Certidão *</dt><dd>Obrigatório — escolha da lista (FGTS, Federal, Estadual, Municipal, Trabalhista...).</dd>
@@ -403,6 +508,9 @@
       <div class="modulo-eyebrow">Controle e prazos</div>
       <h2>Documentos</h2>
       <p class="dek">Repositório central de arquivos — editais, propostas, atas assinadas, pareceres — sem precisar amarrar a um módulo específico.</p>
+      <div class="shot-wrap">
+        <img class="shot" src="Imagens/manual/documentos_lista.png" alt="Listagem de Documentos" />
+      </div>
       <div class="card">
         <dl class="fields">
           <dt>Categoria *</dt><dd>Classificação do arquivo, usada no filtro da listagem.</dd>
@@ -429,6 +537,9 @@
       <div class="card">
         <h3><span class="step-no">2</span>O que aparece no calendário</h3>
         <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Além dos compromissos criados aqui, o calendário também mostra (sem precisar cadastrar nada): vencimento de Atas vigentes, de Contratos vigentes e de Certidões — cada um com uma cor diferente. Clicar num evento de vencimento leva direto para o módulo correspondente.</p>
+        <div class="shot-wrap">
+          <img class="shot" src="Imagens/manual/agenda_mes.png" alt="Agenda em visão de Mês, com eventos coloridos por tipo" />
+        </div>
       </div>
     </section>
 
@@ -442,6 +553,9 @@
           <dt>Alertas já vencidos</dt><dd>Itens já vencidos ("Vencido") sempre aparecem, mesmo que tenham sido marcados como lidos antes — não é possível silenciar de vez algo que já passou do prazo.</dd>
           <dt>O alerta "volta"?</dt><dd>Sim, se a data do registro mudar (ex.: renovou a Ata com nova vigência) — aí é um alerta novo, ainda não lido.</dd>
         </dl>
+        <div class="shot-wrap">
+          <img class="shot" src="Imagens/manual/notificacoes_dropdown.png" alt="Dropdown de alertas e lembretes, aberto pelo sininho" />
+        </div>
       </div>
     </section>
 
@@ -449,6 +563,9 @@
       <div class="modulo-eyebrow">Gestão</div>
       <h2>Relatórios</h2>
       <p class="dek">Exportações em Excel (e PDF, no caso de Resultado mensal) — não tem cadastro, só botões de exportar.</p>
+      <div class="shot-wrap">
+        <img class="shot" src="Imagens/manual/relatorios.png" alt="Tela de Relatórios, com botões de exportação" />
+      </div>
       <div class="card">
         <dl class="fields">
           <dt>Resultado mensal</dt><dd>Ganhou / Declinou / Desclassificado / Fracassado / Revogado, agrupado por mês, a partir da data da sessão.</dd>
@@ -470,6 +587,9 @@
           <dt>Perfil de acesso</dt><dd><strong>Administrador</strong> tem acesso a tudo, sem restrição. <strong>Usuário</strong> só vê as páginas marcadas abaixo.</dd>
           <dt>Páginas liberadas</dt><dd>Só aparece para perfil "Usuário" — marque cada página do menu que essa pessoa pode acessar.</dd>
         </dl>
+        <div class="shot-wrap">
+          <img class="shot" src="Imagens/manual/usuarios_lista.png" alt="Listagem de Usuários" />
+        </div>
       </div>
       <div class="card">
         <h3><span class="step-no">2</span>Editar um usuário existente</h3>
@@ -481,6 +601,9 @@
       <div class="modulo-eyebrow">Gestão</div>
       <h2>Configurações</h2>
       <p class="dek">Integrações externas e dados de demonstração — acessível a qualquer usuário com permissão de escrita, não só Administrador.</p>
+      <div class="shot-wrap">
+        <img class="shot" src="Imagens/manual/configuracoes.png" alt="Tela de Configurações, com integrações e dados de demonstração" />
+      </div>
       <div class="card">
         <h3><span class="step-no">1</span>Integrações</h3>
         <dl class="fields">
@@ -495,5 +618,23 @@
 
   </main>
 </div>
+
+<div class="lightbox" id="lightbox"><img id="lightbox-img" src="" alt="" /></div>
+
+<script>
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImg = document.getElementById('lightbox-img');
+  document.querySelectorAll('.shot').forEach((img) => {
+    img.addEventListener('click', () => {
+      lightboxImg.src = img.src;
+      lightboxImg.alt = img.alt;
+      lightbox.classList.add('show');
+    });
+  });
+  lightbox.addEventListener('click', () => lightbox.classList.remove('show'));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') lightbox.classList.remove('show');
+  });
+</script>
 </body>
 </html>
