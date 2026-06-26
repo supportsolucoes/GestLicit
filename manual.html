@@ -213,6 +213,8 @@
           <dt>UF / Modalidade / Modo de Disputa</dt><dd>Dados do edital. "Modalidade" é normalmente Pregão Eletrônico.</dd>
           <dt>Valor Total Estimado</dt><dd>O valor estimado pelo órgão no edital. Deixe vazio se o edital marcar o valor como sigiloso.</dd>
           <dt>Registro de Preço?</dt><dd>Marque "Sim" se o edital for para formar uma Ata de Registro de Preço (compra recorrente), e não um contrato fechado de uma vez.</dd>
+          <dt>Exige Acervo Técnico?</dt><dd>Marque "Sim" se o edital exige que o fornecedor comprove fornecimento anterior (habilitação técnica). Ao marcar, aparece o campo abaixo.</dd>
+          <dt>% Mínimo do Acervo</dt><dd>Só aparece quando "Exige Acervo Técnico?" estiver marcado. Informe o percentual mínimo exigido pelo edital (padrão: 50%). Exemplo: se o edital pede 100 unidades e exige 50% de acervo, o sistema vai verificar se o produto tem atestados de pelo menos 50 unidades.</dd>
         </dl>
       </div>
 
@@ -236,6 +238,7 @@
           <dt>Custo Unitário</dt><dd>Vem do cadastro do produto, mas pode ser ajustado aqui se o custo mudou.</dd>
           <dt>Margem (%)</dt><dd>Sua margem de lucro desejada. O <strong>Valor Mínimo</strong> é calculado automaticamente: custo × (1 + margem/100).</dd>
           <dt>Valor Inicial</dt><dd>O valor que a empresa vai digitar na sessão para abrir o lance — você escolhe livremente, geralmente acima do Valor Mínimo.</dd>
+          <dt>Acervo (coluna)</dt><dd>Aparece somente quando a licitação está marcada como "Exige Acervo Técnico?". Mostra o status de cada item:<br>✅ — quantidade atestada no <a href="#produtos">Acervo do Produto</a> é suficiente para o percentual exigido;<br>⚠️ — existe atestado, mas a quantidade está abaixo do mínimo (exibe o total atestado);<br>❌ — nenhum atestado cadastrado para esse produto. O cálculo usa: <em>qtd do item × % mínimo do acervo</em>.</dd>
         </dl>
         <div class="warn"><strong>Atenção</strong>O sistema bloqueia salvar a licitação se algum item não tiver produto selecionado.</div>
         <div class="shot-wrap">
@@ -370,6 +373,19 @@
         <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Depois que o Empenho está salvo com itens, aparece a seção "Saldo e entregas". Para cada item, clique em "Entregas" e lance: <strong>Data</strong>, <strong>Quantidade</strong> entregue, <strong>Nota Fiscal</strong> e observação. O saldo restante (Empenhado − Entregue) é calculado solo, nunca digitado.</p>
       </div>
 
+      <div class="card">
+        <h3><span class="step-no">4</span>Gerar Atestado de Capacidade Técnica</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">
+          Depois que um Empenho tem itens e entregas lançadas, o botão <strong>"Gerar Atestado"</strong> aparece no rodapé do modal (ícone de download). Ele gera automaticamente um arquivo <code>.docx</code> formatado com:
+        </p>
+        <ul class="lista">
+          <li>Dados do <strong>órgão</strong> (nome, CNPJ, endereço, nome e cargo do responsável — vêm do cadastro do Órgão);</li>
+          <li>Dados da <strong>empresa fornecedora</strong> (razão social, CNPJ, endereço — configurados em <a href="#configuracoes">Configurações → Minha Empresa</a>);</li>
+          <li>Tabela com os fornecimentos realizados: uma linha por entrega (com NF e data), ou uma linha por item do empenho se as entregas ainda não tiverem sido lançadas.</li>
+        </ul>
+        <div class="tip"><strong>Antes de gerar</strong>Certifique-se de que o Órgão do empenho tem endereço e responsável preenchidos, e que os dados da empresa estão salvos em Configurações → Minha Empresa. Caso contrário, esses campos sairão em branco no documento.</div>
+      </div>
+
       <div class="tip"><strong>Navegar a partir daqui</strong>Use "Ver Ata vinculada" e "Ver Contrato vinculado" no topo do formulário (só aparecem se o respectivo vínculo estiver preenchido) para abrir direto o registro de origem. O botão "Ver Faturamento(s)" leva para as faturas já lançadas contra este Empenho.</div>
     </section>
 
@@ -413,6 +429,7 @@
         <img class="shot" src="Imagens/manual/produtos_lista.png" alt="Listagem de Produtos" />
       </div>
       <div class="card">
+        <h3><span class="step-no">1</span>Campos do cadastro</h3>
         <dl class="fields">
           <dt>Código</dt><dd>Código interno do produto, se a empresa usa algum (ex.: código de outro sistema). Opcional.</dd>
           <dt>Nome do Produto *</dt><dd>Obrigatório — é o que aparece nos seletores dos outros módulos.</dd>
@@ -420,6 +437,20 @@
           <dt>Preço de custo</dt><dd>Usado para calcular o Valor Mínimo na precificação da Licitação. Mantenha atualizado.</dd>
           <dt>Nomes similares</dt><dd>Sinônimos separados por vírgula (ex.: nomes que o produto recebe em editais diferentes), só para facilitar a busca.</dd>
         </dl>
+      </div>
+
+      <div class="card">
+        <h3><span class="step-no">2</span>Acervo Técnico</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">
+          Alguns editais exigem que o fornecedor comprove ter fornecido, no passado, uma quantidade mínima daquele produto (chamado de <em>habilitação técnica</em> ou <em>acervo técnico</em>). O botão com o ícone de certidão em cada linha da listagem abre o painel de Acervo Técnico daquele produto.
+        </p>
+        <dl class="fields">
+          <dt>Total de unidades atestadas</dt><dd>Soma de todas as quantidades atestadas cadastradas — o sistema calcula automaticamente.</dd>
+          <dt>Adicionar Atestado</dt><dd>Preencha: <strong>Data de Emissão</strong>, <strong>Quantidade Atestada</strong> (obrigatório), <strong>Órgão Emissor</strong> (nome livre do órgão que emitiu), <strong>Nº Empenho de Referência</strong> (para rastrear o fornecimento original) e, opcionalmente, envie o arquivo assinado (PDF ou imagem).</dd>
+          <dt>Ver PDF</dt><dd>Link para abrir o arquivo do atestado, quando foi enviado.</dd>
+          <dt>Excluir atestado</dt><dd>Disponível apenas para Administrador.</dd>
+        </dl>
+        <div class="tip"><strong>Dica</strong>Para que o indicador de acervo funcione na Licitação, os atestados precisam estar cadastrados aqui com a quantidade correta. O sistema compara a soma dos atestados do produto com a quantidade necessária calculada a partir do percentual exigido no edital.</div>
       </div>
     </section>
 
@@ -434,8 +465,11 @@
         <dl class="fields">
           <dt>Nome do Órgão *</dt><dd>Obrigatório.</dd>
           <dt>CNPJ / UF / Cidade</dt><dd>Dados de identificação, usados na busca da listagem.</dd>
+          <dt>Endereço (Logradouro, Número, Bairro, Complemento, CEP)</dt><dd>Endereço completo do órgão — usado para compor automaticamente o corpo do <strong>Atestado de Capacidade Técnica</strong> gerado pelo sistema a partir dos Empenhos.</dd>
+          <dt>Responsável (Nome, CPF, Cargo)</dt><dd>Dados de quem assina o atestado pelo órgão — também usados na geração automática do documento.</dd>
           <dt>Observações</dt><dd>Texto livre — ex.: histórico de relacionamento, particularidades de pagamento.</dd>
         </dl>
+        <div class="tip"><strong>Dica</strong>Preencha o endereço e o responsável antes de gerar Atestados de Capacidade Técnica — esses dados aparecem automaticamente no documento gerado.</div>
       </div>
     </section>
 
@@ -600,18 +634,27 @@
     <section class="modulo" id="configuracoes">
       <div class="modulo-eyebrow">Gestão</div>
       <h2>Configurações</h2>
-      <p class="dek">Integrações externas e dados de demonstração — acessível a qualquer usuário com permissão de escrita, não só Administrador.</p>
+      <p class="dek">Dados da empresa, integrações externas e dados de demonstração — acessível a qualquer usuário com permissão de escrita, não só Administrador.</p>
       <div class="shot-wrap">
-        <img class="shot" src="Imagens/manual/configuracoes.png" alt="Tela de Configurações, com integrações e dados de demonstração" />
+        <img class="shot" src="Imagens/manual/configuracoes.png" alt="Tela de Configurações, com dados da empresa, integrações e dados de demonstração" />
       </div>
       <div class="card">
-        <h3><span class="step-no">1</span>Integrações</h3>
+        <h3><span class="step-no">1</span>Minha Empresa</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Dados do fornecedor que aparecem no <strong>Atestado de Capacidade Técnica</strong> gerado automaticamente a partir dos Empenhos. Preencha uma vez e ficará salvo para todos os atestados futuros.</p>
+        <dl class="fields">
+          <dt>Razão Social *</dt><dd>Obrigatório para salvar. Nome completo da empresa conforme o CNPJ.</dd>
+          <dt>CNPJ / Inscrição Estadual</dt><dd>Dados fiscais que aparecem no cabeçalho do atestado.</dd>
+          <dt>Endereço completo</dt><dd>Logradouro, número, complemento, bairro, cidade, UF e CEP — usados no corpo do documento.</dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h3><span class="step-no">2</span>Integrações</h3>
         <dl class="fields">
           <dt>Chave da API (Portal da Transparência)</dt><dd>Necessária para a seção de Certidões CEIS/CNEP funcionar dentro da <a href="#concorrentes">Análise de Concorrente</a>. Cadastro gratuito em <code>api.portaldatransparencia.gov.br</code>.</dd>
         </dl>
       </div>
       <div class="card">
-        <h3><span class="step-no">2</span>Dados de demonstração</h3>
+        <h3><span class="step-no">3</span>Dados de demonstração</h3>
         <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Cria, com um clique, uma licitação de ponta a ponta (com o sufixo "(EXEMPLO)" no nome) para mostrar o sistema a alguém sem usar dados reais. "Remover dados de demonstração" apaga tudo de uma vez. Esta segunda ação é só para Administrador.</p>
       </div>
     </section>
