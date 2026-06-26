@@ -1,6 +1,6 @@
 import * as Service from '../supabase-service.js';
 import { getState, canWrite, isAdmin } from '../state.js';
-import { byId, escapeHtml, formatDate, formatCurrency, formatMoneyInputValue, parseNumber, sumBy, todayISO, calcSaldoEmpenhoItem } from '../helpers.js';
+import { byId, escapeHtml, formatDate, formatCurrency, formatMoneyInputValue, parseNumber, sumBy, todayISO, calcSaldoEmpenhoItem, downloadBlob } from '../helpers.js';
 import { openModal, closeModal, confirmDialog, showToast, badge, renderEmptyState } from '../ui.js';
 import { SITUACOES_EMPENHO, STATUS_COLOR, ICONS } from '../constants.js';
 
@@ -217,6 +217,7 @@ async function abrirFormulario(empenhoId) {
     size: 'xl',
     footerHtml: `
       <button type="button" class="btn btn-ghost" data-action="modal.close">Cancelar</button>
+      ${empenhoId ? `<button type="button" class="btn btn-ghost" data-action="empenhos.gerarAtestado" title="Gerar Atestado de Capacidade Técnica em .docx">${ICONS.download} Gerar Atestado</button>` : ''}
       <button type="button" class="btn btn-primary" data-action="empenhos.salvar">Salvar</button>
     `,
   });
@@ -580,6 +581,193 @@ async function excluir(target) {
   }
 }
 
+async function gerarAtestado() {
+  if (!editingEmpenhoId) {
+    showToast('Salve o empenho antes de gerar o atestado.', 'error');
+    return;
+  }
+  const empenho = cache.find((e) => e.id === editingEmpenhoId);
+  if (!empenho?.orgao_id) {
+    showToast('O empenho precisa de um órgão vinculado para gerar o atestado.', 'error');
+    return;
+  }
+  const itens = itensByEmpenho.get(editingEmpenhoId) || [];
+  if (!itens.length) {
+    showToast('Adicione pelo menos um item ao empenho antes de gerar o atestado.', 'error');
+    return;
+  }
+
+  showToast('Gerando atestado...', 'info');
+
+  try {
+    const orgao = await Service.Orgaos.get(empenho.orgao_id);
+    const settings = getState().lookups.settings || {};
+
+    // Montar linhas da tabela: uma por entrega ou uma por item se sem entrega
+    const rows = [];
+    for (const item of itens) {
+      const entregas = entregasByItemId.get(item.id) || [];
+      if (entregas.length) {
+        for (const ent of entregas) {
+          rows.push({
+            empenho: empenho.numero_empenho,
+            quantidade: String(ent.quantidade),
+            un: 'UN',
+            produto: item.produto_descricao || '',
+            data_nf: formatDate(ent.data_entrega),
+            nf_numero: ent.numero_nota_fiscal || '',
+          });
+        }
+      } else {
+        rows.push({
+          empenho: empenho.numero_empenho,
+          quantidade: String(item.quantidade_empenhada),
+          un: 'UN',
+          produto: item.produto_descricao || '',
+          data_nf: '',
+          nf_numero: '',
+        });
+      }
+    }
+
+    // Dados da nossa empresa
+    const empresa = {
+      nome: settings.empresa_razao_social || '[Razão Social não configurada — veja Configurações]',
+      cnpj: settings.empresa_cnpj || '',
+      ie: settings.empresa_ie || '',
+      logradouro: settings.empresa_logradouro || '',
+      numero: settings.empresa_numero || '',
+      bairro: settings.empresa_bairro || '',
+      cidade: settings.empresa_cidade || '',
+      uf: settings.empresa_uf || '',
+    };
+
+    const partsEndereco = [empresa.logradouro, empresa.numero, empresa.bairro].filter(Boolean);
+    const enderecoEmpresa = [
+      partsEndereco.join(', '),
+      empresa.cidade && empresa.uf ? `na cidade de ${empresa.cidade}/${empresa.uf}` : (empresa.cidade || ''),
+    ].filter(Boolean).join(', ');
+
+    const enderecoOrgaoPartes = [orgao.logradouro, orgao.numero, orgao.bairro].filter(Boolean);
+    const enderecoOrgao = enderecoOrgaoPartes.join(', ');
+    const cidadeUFOrgao = [orgao.cidade, orgao.uf].filter(Boolean).join(' - ');
+
+    const hoje = new Date();
+    const dataExtenso = hoje.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const cidadeData = orgao.cidade ? `${orgao.cidade}, ${dataExtenso}.` : `${dataExtenso}.`;
+
+    // Carregar docx via esm.sh (ES Module)
+    const {
+      Document, Packer, Paragraph, TextRun,
+      Table, TableRow, TableCell,
+      WidthType, BorderStyle, AlignmentType, ShadingType,
+    } = await import('https://esm.sh/docx@8.5.0');
+
+    const cellBorder = { style: BorderStyle.SINGLE, size: 1, color: '999999' };
+    const borders = { top: cellBorder, bottom: cellBorder, left: cellBorder, right: cellBorder };
+    const colWidths = [1495, 1590, 738, 2268, 1275, 1134];
+    const headers = ['Nº EMPENHO', 'QUANTIDADE', 'UN', 'PRODUTO', 'DATA NF', 'NF Nº'];
+
+    function makeCell(text, width, opts = {}) {
+      return new TableCell({
+        borders,
+        width: { size: width, type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 100, right: 100 },
+        shading: opts.header ? { fill: 'F1A983', type: ShadingType.CLEAR } : undefined,
+        children: [new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text: String(text || ''), bold: !!opts.header, size: 18, font: 'Verdana' })],
+        })],
+      });
+    }
+
+    const tbl = new Table({
+      width: { size: 8500, type: WidthType.DXA },
+      columnWidths: colWidths,
+      rows: [
+        new TableRow({ children: headers.map((h, i) => makeCell(h, colWidths[i], { header: true })) }),
+        ...rows.map((r) =>
+          new TableRow({
+            children: [r.empenho, r.quantidade, r.un, r.produto, r.data_nf, r.nf_numero]
+              .map((v, i) => makeCell(v, colWidths[i])),
+          })
+        ),
+      ],
+    });
+
+    function p(children, opts = {}) {
+      return new Paragraph({ alignment: opts.align || AlignmentType.LEFT, children });
+    }
+    function t(text, opts = {}) {
+      return new TextRun({ text, bold: !!opts.bold, size: 18, font: 'Verdana', break: opts.break });
+    }
+
+    const aberturaTexto = [
+      `Atestamos, para os devidos fins, que a empresa `,
+      empresa.nome,
+      empresa.cnpj ? `, sob inscrição do CNPJ nº ${empresa.cnpj}` : '',
+      empresa.ie ? ` e da Inscrição Estadual nº ${empresa.ie}` : '',
+      enderecoEmpresa ? `, ${enderecoEmpresa}` : '',
+      ', forneceu a esta instituição os produtos/serviços abaixo descritos, de forma satisfatória, atendendo plenamente às condições contratuais estabelecidas.',
+    ];
+
+    const doc = new Document({
+      sections: [{
+        properties: {
+          page: {
+            size: { width: 11906, height: 16838 },
+            margin: { top: 1417, right: 1701, bottom: 1417, left: 1701 },
+          },
+        },
+        children: [
+          p([t('PAPEL TIMBRADO - ÓRGÃO', {})], { align: AlignmentType.RIGHT }),
+          p([]),
+          p([t('ATESTADO DE CAPACIDADE TÉCNICA', { bold: true })], { align: AlignmentType.CENTER }),
+          p([]),
+          p(aberturaTexto.map((seg, i) => t(seg, { bold: i === 1 })), { align: AlignmentType.BOTH }),
+          p([]),
+          p([
+            t('DADOS DO CONTRATANTE:', { bold: true }),
+            t(`Razão Social: ${orgao.nome || ''}`, { break: 1 }),
+            t(`CNPJ: ${orgao.cnpj || ''}`, { break: 1 }),
+            ...(enderecoOrgao ? [t(`Endereço: ${enderecoOrgao}${cidadeUFOrgao ? ` - ${cidadeUFOrgao}` : ''}${orgao.cep ? `, Cep: ${orgao.cep}` : ''}`, { break: 1 })] : []),
+          ]),
+          p([]),
+          p([t('OBJETO DO FORNECIMENTO:', { bold: true })]),
+          tbl,
+          p([]),
+          p([
+            t('Declaramos, ainda, que a empresa executou o fornecimento de forma '),
+            t('satisfatória', { bold: true }),
+            t(', cumprindo com os prazos, qualidade e demais obrigações assumidas, não havendo, até a presente data, fatos que desabonem sua conduta técnica e comercial.'),
+          ], { align: AlignmentType.BOTH }),
+          p([]),
+          p([
+            t('O presente atestado é emitido para fins de comprovação de '),
+            t('capacidade técnica/operacional', { bold: true }),
+            t(', nos termos da legislação vigente.'),
+          ], { align: AlignmentType.BOTH }),
+          ...Array.from({ length: 6 }, () => p([])),
+          p([t(cidadeData)], { align: AlignmentType.RIGHT }),
+          ...Array.from({ length: 6 }, () => p([])),
+          p([t('_________________________________________________________')]),
+          p([t(orgao.responsavel_nome || 'NOME DO RESPONSÁVEL')]),
+          p([t(`CPF: ${orgao.responsavel_cpf || ''}`)]),
+          p([t(`Cargo: ${orgao.responsavel_cargo || ''}`)]),
+        ],
+      }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const nomeArquivo = `Atestado_${(empenho.numero_empenho || 'empenho').replace(/[^a-zA-Z0-9]/g, '_')}_${(orgao.nome || 'orgao').replace(/\s+/g, '_').slice(0, 40)}.docx`;
+    downloadBlob(blob, nomeArquivo);
+    showToast('Atestado gerado com sucesso!', 'success');
+  } catch (err) {
+    console.error('gerarAtestado:', err);
+    showToast(err.message || 'Erro ao gerar atestado.', 'error');
+  }
+}
+
 export const actions = {
   'empenhos.novo': () => abrirFormulario(null),
   'empenhos.editar': (target) => abrirFormulario(Number(target.dataset.id)),
@@ -591,6 +779,7 @@ export const actions = {
   'empenhos.addEntrega': (target) => addEntregaHandler(target),
   'empenhos.excluirEntrega': (target) => excluirEntregaHandler(target),
   'empenhos.salvar': () => salvar(),
+  'empenhos.gerarAtestado': () => gerarAtestado(),
   'empenhos.limparFiltro': () => limparFiltro(),
   'empenhos.verArquivo': (target) => verArquivo(target),
 };

@@ -903,4 +903,21 @@ notify pgrst, 'reload schema';
 -- ============================================================
 alter table public.faturamentos add column if not exists arquivo_url text;
 
+-- ============================================================
+-- ALTERAÇÕES v1.13 — Gerador de Atestado de Capacidade Técnica
+-- Adiciona campos de endereço e dados do responsável ao órgão
+-- (necessários para compor o corpo do atestado automaticamente).
+-- Os dados da "Minha Empresa" (fornecedor) são armazenados em
+-- app_settings com prefixo "empresa_" — sem nova tabela.
+-- ============================================================
+alter table public.orgaos
+  add column if not exists logradouro        text,
+  add column if not exists numero            text,
+  add column if not exists complemento       text,
+  add column if not exists bairro            text,
+  add column if not exists cep               text,
+  add column if not exists responsavel_nome  text,
+  add column if not exists responsavel_cpf   text,
+  add column if not exists responsavel_cargo text;
+
 notify pgrst, 'reload schema';

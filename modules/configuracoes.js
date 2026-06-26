@@ -2,15 +2,46 @@ import * as Service from '../supabase-service.js';
 import { refreshLookups, currentUser, getState, canWrite, isAdmin } from '../state.js';
 import { byId, escapeHtml, todayISO } from '../helpers.js';
 import { showToast, confirmDialog, badge, renderEmptyState } from '../ui.js';
-import { ICONS } from '../constants.js';
+import { ICONS, UFS } from '../constants.js';
+
+const EMPRESA_KEYS = ['razao_social', 'cnpj', 'ie', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf', 'cep'];
+
+function empresaVal(key) {
+  return escapeHtml(getState().lookups.settings?.[`empresa_${key}`] || '');
+}
 
 export async function render(container) {
   container.innerHTML = `
     <div class="page-header">
       <div>
         <h1>Configurações</h1>
-        <p>Integrações e dados de demonstração.</p>
+        <p>Dados da empresa, integrações e dados de demonstração.</p>
       </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <strong>Minha Empresa</strong>
+      <p style="color:var(--gray-500); font-size:13px; margin:4px 0 14px;">
+        Dados do fornecedor que aparecem no corpo do Atestado de Capacidade Técnica gerado automaticamente pelo sistema.
+      </p>
+      <div class="form-grid cols-3">
+        <div class="form-field span-2"><label>Razão Social *</label><input type="text" id="emp-razao_social" value="${empresaVal('razao_social')}" placeholder="Nome completo da empresa" /></div>
+        <div class="form-field"><label>CNPJ</label><input type="text" id="emp-cnpj" value="${empresaVal('cnpj')}" placeholder="00.000.000/0000-00" /></div>
+        <div class="form-field"><label>Inscrição Estadual</label><input type="text" id="emp-ie" value="${empresaVal('ie')}" placeholder="000.000.000.000" /></div>
+        <div class="form-field span-2"><label>Logradouro</label><input type="text" id="emp-logradouro" value="${empresaVal('logradouro')}" placeholder="Rua, Avenida..." /></div>
+        <div class="form-field"><label>Número</label><input type="text" id="emp-numero" value="${empresaVal('numero')}" /></div>
+        <div class="form-field"><label>Complemento</label><input type="text" id="emp-complemento" value="${empresaVal('complemento')}" /></div>
+        <div class="form-field"><label>Bairro</label><input type="text" id="emp-bairro" value="${empresaVal('bairro')}" /></div>
+        <div class="form-field span-2"><label>Cidade</label><input type="text" id="emp-cidade" value="${empresaVal('cidade')}" /></div>
+        <div class="form-field"><label>UF</label>
+          <select id="emp-uf">
+            <option value="">—</option>
+            ${UFS.map((uf) => `<option value="${uf}" ${empresaVal('uf') === uf ? 'selected' : ''}>${uf}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-field"><label>CEP</label><input type="text" id="emp-cep" value="${empresaVal('cep')}" placeholder="00000-000" /></div>
+      </div>
+      ${canWrite() ? `<div style="margin-top:14px;"><button type="button" class="btn btn-primary btn-sm" data-action="configuracoes.salvarEmpresa">Salvar dados da empresa</button></div>` : ''}
     </div>
 
     <div class="card" style="margin-bottom:16px;">
@@ -49,6 +80,26 @@ export async function render(container) {
   }
 
   await renderDemoStatus();
+}
+
+async function salvarEmpresa() {
+  const vals = {};
+  for (const key of EMPRESA_KEYS) {
+    vals[key] = byId(`emp-${key}`)?.value.trim() || null;
+  }
+  if (!vals.razao_social) {
+    showToast('Informe a Razão Social da empresa.', 'error');
+    return;
+  }
+  try {
+    for (const [key, valor] of Object.entries(vals)) {
+      await Service.upsertAppSetting(`empresa_${key}`, valor);
+    }
+    await refreshLookups();
+    showToast('Dados da empresa salvos.', 'success');
+  } catch (err) {
+    showToast(err.message || 'Erro ao salvar dados da empresa.', 'error');
+  }
 }
 
 async function salvarChave() {
@@ -231,6 +282,7 @@ async function removerDemo() {
 }
 
 export const actions = {
+  'configuracoes.salvarEmpresa': () => salvarEmpresa(),
   'configuracoes.salvarChave': () => salvarChave(),
   'configuracoes.criarDemo': () => criarDemo(),
   'configuracoes.removerDemo': () => removerDemo(),
