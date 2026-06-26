@@ -108,12 +108,19 @@ async function analisarCnpj(cnpjDigits) {
   setAnalisarBusy(true);
 
   try {
-    const [empresa, pncp, certidoes] = await Promise.all([
+    const [empresa, pncp, atas, certidoes] = await Promise.all([
       External.fetchEmpresaCnpj(cnpjDigits).catch((err) => ({ erro: err.message })),
       External.fetchContratosPncp(cnpjDigits).catch((err) => ({ erro: err.message, items: [], total: 0 })),
-      External.fetchCertidoesPortalTransparencia(cnpjDigits).catch((err) => ({ erro: err.message, configured: true, ceis: [], cnep: [] })),
+      External.fetchAtasPncp(cnpjDigits).catch(() => ({ items: [], total: 0 })),
+      External.fetchCertidoesPortalTransparencia(cnpjDigits).catch((err) => ({ erro: err.message, configured: true, ceis: [], cnep: [], ceaf: [], leniencia: [] })),
     ]);
-    ultimaAnalise = { cnpj: cnpjDigits, empresa, contratos: pncp.items || [], totalContratos: pncp.total || 0, certidoes };
+    ultimaAnalise = {
+      cnpj: cnpjDigits,
+      empresa,
+      contratos: pncp.items || [], totalContratos: pncp.total || 0,
+      atas: atas.items || [],     totalAtas: atas.total || 0,
+      certidoes,
+    };
     renderResultado();
   } catch (err) {
     wrap.innerHTML = renderEmptyState(`Erro ao consultar: ${err.message || err}`);
@@ -124,10 +131,10 @@ async function analisarCnpj(cnpjDigits) {
 
 function renderResultado() {
   const wrap = byId('analise-resultado');
-  const { cnpj, empresa, contratos, totalContratos, certidoes } = ultimaAnalise;
+  const { cnpj, empresa, contratos, totalContratos, atas, totalAtas, certidoes } = ultimaAnalise;
 
   // Só aborta se a Receita Federal falhou E não há nenhum dado do PNCP
-  if (empresa.erro && !contratos.length) {
+  if (empresa.erro && !contratos.length && !atas.length) {
     wrap.innerHTML = renderEmptyState(`Não foi possível consultar os dados: ${escapeHtml(empresa.erro)}`);
     return;
   }
@@ -135,6 +142,7 @@ function renderResultado() {
   // ── Métricas ────────────────────────────────────────────────────────────
   const valorTotal = sumBy(contratos, (c) => Number(c.valor_global || 0));
   const ticketMedio = contratos.length ? valorTotal / contratos.length : 0;
+  const valorTotalAtas = sumBy(atas, (a) => Number(a.valor_global || 0));
   const datasValidas = contratos.map((c) => c.data_assinatura).filter(Boolean).sort().reverse();
   const ultimoContrato = datasValidas[0] || null;
 
@@ -179,17 +187,26 @@ function renderResultado() {
     <div class="conc-result-header">
       <div>
         <div class="conc-result-nome">${escapeHtml(nomeEmpresa)}</div>
-        ${empresa.nome_fantasia ? `<div class="conc-result-fantasia">${escapeHtml(empresa.nome_fantasia)}</div>` : ''}
+        <div class="conc-result-fantasia">
+          ${empresa.nome_fantasia ? escapeHtml(empresa.nome_fantasia) : ''}
+          ${empresa._fonte === 'ReceitaWS' ? `<span class="badge badge-muted" style="margin-left:6px;">via ReceitaWS</span>` : ''}
+        </div>
       </div>
       <button type="button" class="btn btn-ghost btn-sm" data-action="concorrentes.novaConsulta">${ICONS.plus} Nova consulta</button>
     </div>
 
-    <div class="kpi-grid kpi-grid-4" style="margin-top:16px; margin-bottom:0;">
+    <div class="kpi-grid" style="margin-top:16px; margin-bottom:0;">
       <div class="kpi-card">
         <div class="kpi-icon kpi-icon--blue">${ICONS.licitacoes}</div>
         <div class="kpi-value">${totalContratos}</div>
         <div class="kpi-label">Contratos no PNCP</div>
         <div class="kpi-foot">${contratos.length < totalContratos ? `${contratos.length} carregados` : 'todos carregados'}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--purple">${ICONS.atas}</div>
+        <div class="kpi-value">${totalAtas || '-'}</div>
+        <div class="kpi-label">Atas no PNCP</div>
+        <div class="kpi-foot">${atas.length ? `${fmtShort(valorTotalAtas)}` : 'Reg. de preço'}</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-icon kpi-icon--indigo">${ICONS.empenhos}</div>
@@ -349,6 +366,39 @@ function renderResultado() {
         </div>
       ` : `<div style="padding:10px 0;">${renderEmptyState('Nenhum contrato encontrado no PNCP para este CNPJ.')}</div>`}
     </div>
+
+    ${atas.length ? `
+    <div class="card" style="margin-top:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
+        <div>
+          <div class="dash-card-title">Atas de Registro de Preço no PNCP</div>
+          <div class="dash-card-subtitle" style="margin-top:2px;">${atas.length} de ${totalAtas} registros carregados · pregões com vigência de fornecimento</div>
+        </div>
+      </div>
+      <div class="table-wrap" style="max-height:320px; overflow-y:auto;">
+        <table class="data-table">
+          <thead>
+            <tr><th>Objeto</th><th>Órgão</th><th>UF</th><th>Publicação</th><th>Valor</th><th></th></tr>
+          </thead>
+          <tbody>
+            ${atas.map((a) => `
+              <tr>
+                <td>
+                  <div style="font-weight:500;">${escapeHtml(a.title || '-')}</div>
+                  <div style="font-size:11.5px; color:var(--gray-500); margin-top:2px;">${escapeHtml((a.description || '').slice(0, 80))}${(a.description || '').length > 80 ? '…' : ''}</div>
+                </td>
+                <td style="font-size:12.5px;">${escapeHtml(a.orgao_nome || '-')}</td>
+                <td style="font-size:12.5px; white-space:nowrap;">${escapeHtml(a.municipio_nome || '-')}/${escapeHtml(a.uf || '-')}</td>
+                <td style="white-space:nowrap; font-size:12.5px;">${formatDate(a.data_assinatura || a.data_publicacao)}</td>
+                <td style="white-space:nowrap; font-weight:600;">${a.valor_global ? formatCurrency(a.valor_global) : '-'}</td>
+                <td>${a.item_url ? `<a href="https://pncp.gov.br/app${escapeHtml(a.item_url)}" target="_blank" rel="noopener" class="link-btn">PNCP</a>` : ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    ` : ''}
   `;
 
   if (contratos.length) {
@@ -363,7 +413,7 @@ function renderCertidoes(certidoes) {
       <div class="conc-certidoes-banner conc-certidoes-banner--info">
         ${ICONS.certidoes}
         <div>
-          <strong>Certidões de sanção (CEIS/CNEP) não disponíveis</strong>
+          <strong>Certidões de sanção (CEIS/CNEP/CEAF) não disponíveis</strong>
           <p>Configure uma chave gratuita em <a href="https://api.portaldatransparencia.gov.br/api-de-dados/cadastrar-email" target="_blank" rel="noopener">api.portaldatransparencia.gov.br</a> e cole em <strong>Configurações → Integrações</strong> para ativar.</p>
         </div>
       </div>`;
@@ -371,37 +421,101 @@ function renderCertidoes(certidoes) {
   if (certidoes.erro) {
     return `<div class="conc-certidoes-banner conc-certidoes-banner--warning">${ICONS.bell}<div><strong>Erro ao consultar certidões</strong><p>${escapeHtml(certidoes.erro)}</p></div></div>`;
   }
-  const linhas = [...(certidoes.ceis || []).map((s) => ({ ...s, fonte: 'CEIS' })), ...(certidoes.cnep || []).map((s) => ({ ...s, fonte: 'CNEP' }))];
-  if (!linhas.length) {
+
+  const sancoes = [
+    ...(certidoes.ceis || []).map((s) => ({ ...s, fonte: 'CEIS' })),
+    ...(certidoes.cnep || []).map((s) => ({ ...s, fonte: 'CNEP' })),
+  ];
+  const ceaf = certidoes.ceaf || [];
+  const leniencia = certidoes.leniencia || [];
+
+  if (!sancoes.length && !ceaf.length && !leniencia.length) {
     return `
       <div class="conc-certidoes-banner conc-certidoes-banner--success">
         ${ICONS.check}
-        <div><strong>Nada consta</strong><p>Nenhuma sanção encontrada no CEIS ou CNEP.</p></div>
+        <div><strong>Nada consta</strong><p>Nenhuma sanção encontrada no CEIS, CNEP, CEAF nem acordos de leniência.</p></div>
       </div>`;
   }
-  return `
-    <div class="conc-certidoes-banner conc-certidoes-banner--danger">
-      ${ICONS.certidoes}
-      <div style="flex:1; min-width:0;">
-        <strong>${badge(`${linhas.length} sanção(ões) encontrada(s)`, 'danger')}</strong>
-        <div class="table-wrap" style="margin-top:10px;">
-          <table class="data-table">
-            <thead><tr><th>Fonte</th><th>Órgão sancionador</th><th>Tipo</th><th>Início</th><th>Fim</th></tr></thead>
-            <tbody>
-              ${linhas.map((s) => `
-                <tr>
-                  <td>${s.fonte}</td>
-                  <td>${escapeHtml(s.orgaoSancionador?.nome || s.nomeOrgaoSancionador || '-')}</td>
-                  <td>${escapeHtml(s.tipoSancao?.descricaoResumida || s.tipoSancao?.descricao || '-')}</td>
-                  <td>${formatDate(s.dataInicioSancao)}</td>
-                  <td>${formatDate(s.dataFimSancao)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+
+  const parts = [];
+
+  if (sancoes.length) {
+    parts.push(`
+      <div class="conc-certidoes-banner conc-certidoes-banner--danger">
+        ${ICONS.certidoes}
+        <div style="flex:1; min-width:0;">
+          <strong>${badge(`${sancoes.length} sanção(ões) — CEIS/CNEP`, 'danger')}</strong>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table class="data-table">
+              <thead><tr><th>Fonte</th><th>Órgão sancionador</th><th>Tipo</th><th>Início</th><th>Fim</th></tr></thead>
+              <tbody>
+                ${sancoes.map((s) => `
+                  <tr>
+                    <td>${s.fonte}</td>
+                    <td>${escapeHtml(s.orgaoSancionador?.nome || s.nomeOrgaoSancionador || '-')}</td>
+                    <td>${escapeHtml(s.tipoSancao?.descricaoResumida || s.tipoSancao?.descricao || '-')}</td>
+                    <td>${formatDate(s.dataInicioSancao)}</td>
+                    <td>${formatDate(s.dataFimSancao)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
-    </div>`;
+      </div>`);
+  }
+
+  if (ceaf.length) {
+    parts.push(`
+      <div class="conc-certidoes-banner conc-certidoes-banner--danger" style="margin-top:8px;">
+        ${ICONS.certidoes}
+        <div style="flex:1; min-width:0;">
+          <strong>${badge(`${ceaf.length} registro(s) — CEAF (Expulsões)`, 'danger')}</strong>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table class="data-table">
+              <thead><tr><th>Nome</th><th>Cargo</th><th>Órgão</th><th>Publicação</th></tr></thead>
+              <tbody>
+                ${ceaf.map((c) => `
+                  <tr>
+                    <td>${escapeHtml(c.nome || c.nomeSancionado || '-')}</td>
+                    <td>${escapeHtml(c.cargo || '-')}</td>
+                    <td>${escapeHtml(c.orgao?.nome || c.nomeOrgao || '-')}</td>
+                    <td>${formatDate(c.dataPublicacaoMou || c.dataPublicacao)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>`);
+  }
+
+  if (leniencia.length) {
+    parts.push(`
+      <div class="conc-certidoes-banner conc-certidoes-banner--warning" style="margin-top:8px;">
+        ${ICONS.bell}
+        <div style="flex:1; min-width:0;">
+          <strong>${badge(`${leniencia.length} acordo(s) de leniência`, 'warning')}</strong>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table class="data-table">
+              <thead><tr><th>Situação</th><th>Órgão acordante</th><th>Assinatura</th><th>Publicação</th></tr></thead>
+              <tbody>
+                ${leniencia.map((l) => `
+                  <tr>
+                    <td>${escapeHtml(l.situacaoAcordo?.descricao || l.situacao || '-')}</td>
+                    <td>${escapeHtml(l.orgaoAcordante?.nome || l.nomeOrgaoAcordante || '-')}</td>
+                    <td>${formatDate(l.dataAssinatura)}</td>
+                    <td>${formatDate(l.dataPublicacao)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>`);
+  }
+
+  return parts.join('');
 }
 
 function exportarExcel() {
