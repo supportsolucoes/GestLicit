@@ -19,7 +19,7 @@ export async function render(container) {
       </div>
     </div>
 
-    <div class="card" style="margin-bottom:16px;">
+    <div class="card no-sticky" style="margin-bottom:16px;">
       <strong>Minha Empresa</strong>
       <p style="color:var(--gray-500); font-size:13px; margin:4px 0 14px;">
         Dados do fornecedor que aparecem no corpo do Atestado de Capacidade Técnica gerado automaticamente pelo sistema.

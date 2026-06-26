@@ -856,7 +856,7 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .modal-overlay { animation: gl-overlay-in 200ms ease; }
 
 /* Sticky filter / search bar — first .card after page-header that contains a text input */
-.page-header + .card:has(input) {
+.page-header + .card:has(input):not(.no-sticky) {
   position: sticky;
   top: var(--header-height);
   z-index: 8;
