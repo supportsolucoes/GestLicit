@@ -921,3 +921,43 @@ alter table public.orgaos
   add column if not exists responsavel_cargo text;
 
 notify pgrst, 'reload schema';
+
+-- ============================================================
+-- ALTERAÇÕES v1.14 — Acervo Técnico por Produto
+-- Cria tabela produto_atestados para armazenar atestados de
+-- capacidade técnica por produto. Adiciona flags na licitação
+-- para indicar se exige acervo e o percentual mínimo requerido.
+-- ============================================================
+
+create table if not exists public.produto_atestados (
+  id                  bigserial primary key,
+  produto_id          bigint not null references public.produtos(id) on delete cascade,
+  orgao_emissor       text,
+  data_emissao        date,
+  quantidade_atestada numeric(14,3) not null,
+  numero_empenho      text,
+  arquivo_url         text,
+  observacoes         text,
+  created_at          timestamptz default now()
+);
+
+alter table public.produto_atestados enable row level security;
+
+create policy "autenticado pode ler produto_atestados"
+  on public.produto_atestados for select to authenticated using (true);
+
+create policy "escritor pode inserir produto_atestados"
+  on public.produto_atestados for insert to authenticated with check (true);
+
+create policy "escritor pode atualizar produto_atestados"
+  on public.produto_atestados for update to authenticated using (true);
+
+create policy "admin pode excluir produto_atestados"
+  on public.produto_atestados for delete to authenticated
+  using (public.get_user_role() = 'administrador');
+
+alter table public.licitacoes
+  add column if not exists exige_atestado      boolean default false,
+  add column if not exists percentual_atestado numeric(5,2) default 50;
+
+notify pgrst, 'reload schema';

@@ -14,6 +14,7 @@ let editingItems = [];
 let originalItemIds = new Set();
 let editingLicitacaoId = null;
 let resultadoItems = [];
+let atestadoSumByProduto = new Map();
 
 export async function render(container) {
   container.innerHTML = `
@@ -231,6 +232,35 @@ function toggleItens(target) {
   target.textContent = el.hidden ? '↓ Ver itens' : '↑ Ocultar itens';
 }
 
+async function reloadAtestados() {
+  if (!byId('f-exige-atestado')?.checked) {
+    atestadoSumByProduto = new Map();
+    return;
+  }
+  const ids = [...new Set(editingItems.map((i) => i.produto_id).filter(Boolean))];
+  if (!ids.length) { atestadoSumByProduto = new Map(); return; }
+  const atests = await Service.listAtestadosByProdutos(ids);
+  atestadoSumByProduto = new Map();
+  for (const a of atests) {
+    const k = String(a.produto_id);
+    atestadoSumByProduto.set(k, (atestadoSumByProduto.get(k) || 0) + Number(a.quantidade_atestada || 0));
+  }
+}
+
+function acervoStatusItem(item, percentual) {
+  if (!item.produto_id || !item.quantidade) return '';
+  const qtdNecessaria = parseNumber(item.quantidade) * percentual / 100;
+  if (qtdNecessaria <= 0) return '';
+  const qtdAtestada = atestadoSumByProduto.get(String(item.produto_id)) || 0;
+  if (qtdAtestada >= qtdNecessaria) {
+    return `<span style="color:var(--success)" title="✓ ${formatNumber(qtdAtestada, 0)} atestadas / ${formatNumber(qtdNecessaria, 0)} necessárias">✅ ${formatNumber(qtdAtestada, 0)}</span>`;
+  }
+  if (qtdAtestada > 0) {
+    return `<span style="color:var(--warning)" title="⚠ ${formatNumber(qtdAtestada, 0)} atestadas / ${formatNumber(qtdNecessaria, 0)} necessárias">⚠️ ${formatNumber(qtdAtestada, 0)}</span>`;
+  }
+  return `<span style="color:var(--danger)" title="Sem atestado. Necessário: ${formatNumber(qtdNecessaria, 0)} un.">❌</span>`;
+}
+
 async function abrirFormulario(licitacaoId) {
   editingLicitacaoId = licitacaoId || null;
   let licitacao = {
@@ -239,15 +269,27 @@ async function abrirFormulario(licitacaoId) {
     prazo_entrega: '', prazo_pagamento: '', validade_proposta: '',
     nome_pregoeiro: '', telefone_pregoeiro: '', email_pregoeiro: '', enderecos: '',
     objeto: '', recurso_contrarrazao: false, motivo_rc: '', deferido_indeferido: '', observacoes: '',
+    exige_atestado: false, percentual_atestado: 50,
   };
   editingItems = [];
   originalItemIds = new Set();
+  atestadoSumByProduto = new Map();
 
   if (licitacaoId) {
     licitacao = cache.find((l) => l.id === licitacaoId) || await Service.getLicitacao(licitacaoId);
     const itens = await Service.listLicitacaoItens(licitacaoId);
     editingItems = itens.map((it) => ({ ...it }));
     originalItemIds = new Set(itens.map((it) => it.id));
+    if (licitacao.exige_atestado && editingItems.length) {
+      const ids = [...new Set(editingItems.map((i) => i.produto_id).filter(Boolean))];
+      if (ids.length) {
+        const atests = await Service.listAtestadosByProdutos(ids);
+        for (const a of atests) {
+          const k = String(a.produto_id);
+          atestadoSumByProduto.set(k, (atestadoSumByProduto.get(k) || 0) + Number(a.quantidade_atestada || 0));
+        }
+      }
+    }
   }
 
   const orgaosOptions = getState().lookups.orgaos
@@ -268,6 +310,14 @@ async function abrirFormulario(licitacaoId) {
         <div class="form-field">
           <label>Registro de Preço?</label>
           <div class="checkbox-field" style="height:38px;"><input type="checkbox" id="f-registro-preco" ${licitacao.registro_preco ? 'checked' : ''} /> Sim</div>
+        </div>
+        <div class="form-field">
+          <label>Exige Acervo Técnico?</label>
+          <div class="checkbox-field" style="height:38px;"><input type="checkbox" id="f-exige-atestado" ${licitacao.exige_atestado ? 'checked' : ''} /> Sim</div>
+        </div>
+        <div class="form-field" id="f-wrap-percentual" ${!licitacao.exige_atestado ? 'style="display:none"' : ''}>
+          <label>% Mínimo do Acervo</label>
+          <input type="number" min="1" max="100" id="f-percentual-atestado" value="${licitacao.percentual_atestado ?? 50}" />
         </div>
       </div>
 
@@ -326,6 +376,15 @@ async function abrirFormulario(licitacaoId) {
   });
 
   renderItemsTable();
+
+  byId('f-exige-atestado')?.addEventListener('change', async () => {
+    const wrap = byId('f-wrap-percentual');
+    if (wrap) wrap.style.display = byId('f-exige-atestado').checked ? '' : 'none';
+    await reloadAtestados();
+    renderItemsTable();
+  });
+
+  byId('f-percentual-atestado')?.addEventListener('input', () => renderItemsTable());
 }
 
 function renderItemsTable() {
@@ -338,13 +397,18 @@ function renderItemsTable() {
     return;
   }
 
+  const exigeAtestado = byId('f-exige-atestado')?.checked ?? false;
+  const percentualAtestado = parseNumber(byId('f-percentual-atestado')?.value || '50') || 50;
+
   wrap.innerHTML = `
     <div class="table-wrap items-table">
       <table class="data-table">
         <thead>
           <tr>
             <th>Item</th><th>Produto</th><th>Qtd</th><th>Marca/Fabricante</th><th>Modelo/Versão</th>
-            <th>Valor Ref.</th><th>Custo</th><th>Margem %</th><th>Valor Mínimo</th><th>Valor Inicial</th><th></th>
+            <th>Valor Ref.</th><th>Custo</th><th>Margem %</th><th>Valor Mínimo</th><th>Valor Inicial</th>
+            ${exigeAtestado ? '<th title="Acervo Técnico: qtd atestada vs qtd necessária">Acervo</th>' : ''}
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -365,6 +429,7 @@ function renderItemsTable() {
               <td><input type="text" data-field="margem_percentual" value="${item.margem_percentual ?? ''}" style="width:70px;" /></td>
               <td><input type="text" data-field="valor_minimo" value="${formatMoneyInputValue(item.valor_minimo)}" style="width:90px;" placeholder="0,00" /></td>
               <td><input type="text" data-field="valor_inicial" value="${formatMoneyInputValue(item.valor_inicial)}" style="width:90px;" placeholder="0,00" /></td>
+              ${exigeAtestado ? `<td style="white-space:nowrap;">${acervoStatusItem(item, percentualAtestado)}</td>` : ''}
               <td><button type="button" class="icon-btn" data-action="licitacoes.removerItem" data-row="${idx}">${ICONS.trash}</button></td>
             </tr>
           `).join('')}
@@ -408,6 +473,9 @@ function onItemFieldChange(event) {
       recalcValorMinimo(item);
       row.querySelector('[data-field="valor_minimo"]').value = formatMoneyInputValue(item.valor_minimo);
     }
+    if (byId('f-exige-atestado')?.checked) {
+      reloadAtestados().then(() => renderItemsTable());
+    }
   }
 
   if (field === 'custo_unitario' || field === 'margem_percentual') {
@@ -441,6 +509,8 @@ async function salvar() {
     uf: byId('f-uf').value || null,
     modalidade: byId('f-modalidade').value,
     registro_preco: byId('f-registro-preco').checked,
+    exige_atestado: byId('f-exige-atestado').checked,
+    percentual_atestado: parseNumber(byId('f-percentual-atestado')?.value || '50') || 50,
     valor_total_estimado: byId('f-valor-total-estimado').value ? parseNumber(byId('f-valor-total-estimado').value) : null,
     modo_disputa: byId('f-modo-disputa').value || null,
     data_abertura: dataAbertura ? new Date(dataAbertura).toISOString() : null,

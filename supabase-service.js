@@ -468,3 +468,28 @@ export async function uploadFaturamentoArquivo(file, faturamentoId) {
   if (error) throw error;
   return path;
 }
+
+export async function listAtestadosByProduto(produtoId) {
+  return handle(sb().from('produto_atestados').select('*').eq('produto_id', produtoId).order('data_emissao', { ascending: false }));
+}
+
+export async function listAtestadosByProdutos(produtoIds) {
+  if (!produtoIds || !produtoIds.length) return [];
+  return handle(sb().from('produto_atestados').select('*').in('produto_id', produtoIds.map(Number)));
+}
+
+export async function createAtestadoProduto(payload) {
+  return handle(sb().from('produto_atestados').insert(payload).select('*').single());
+}
+
+export async function deleteAtestadoProduto(id) {
+  return handle(sb().from('produto_atestados').delete().eq('id', id));
+}
+
+export async function uploadAtestadoProduto(file, produtoId) {
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `Atestado/${produtoId}_${Date.now()}_${safeName}`;
+  const { error } = await sb().storage.from(DOCUMENTOS_BUCKET).upload(path, file);
+  if (error) throw error;
+  return path;
+}
