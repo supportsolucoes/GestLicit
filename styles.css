@@ -392,6 +392,40 @@ a { color: var(--blue); text-decoration: none; }
 .dash-card-title  { font-size: 14px; font-weight: 700; color: var(--gray-900); }
 .dash-card-subtitle { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
 
+/* ---------- Dashboard: seletor de período ---------- */
+.periodo-tabs { display: flex; gap: 4px; align-items: center; }
+.periodo-tab {
+  padding: 6px 14px; border-radius: 6px;
+  border: 1.5px solid var(--gray-200); background: var(--white);
+  color: var(--gray-600); font-size: 12.5px; font-weight: 600;
+  cursor: pointer; transition: border-color .12s, color .12s, background .12s;
+}
+.periodo-tab:hover { border-color: var(--primary); color: var(--primary); }
+.periodo-tab--active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* ---------- Dashboard: bloco de KPIs do período ---------- */
+.periodo-kpi-block {
+  border: 1.5px solid rgba(30,58,95,.14);
+  border-left: 4px solid var(--primary);
+  border-radius: 10px;
+  padding: 16px 20px 20px;
+  margin-bottom: 18px;
+  background: #F8FAFC;
+}
+.periodo-kpi-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--primary); margin-bottom: 14px;
+}
+.periodo-kpi-label span { color: var(--gray-400); font-weight: 500; text-transform: none; letter-spacing: 0; }
+.kpi-card--periodo { background: var(--white); }
+
+/* ---------- Dashboard: label de seção secundária ---------- */
+.dash-section-label {
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--gray-400);
+  margin: 18px 0 10px;
+}
+
 .donut-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 14px; }
 .donut-legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--gray-700); }
 .donut-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }

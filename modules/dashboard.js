@@ -13,13 +13,28 @@ const STATUS_HEX = {
   'Em disputa': '#1E3A5F',
 };
 
+let _periodo = 'mes';
+let _data = null;
+let _container = null;
+
 function fmtShort(val) {
   if (val >= 1e6) return `R$ ${(val / 1e6).toFixed(1).replace('.', ',')}M`;
   if (val >= 1e3) return `R$ ${(val / 1e3).toFixed(0)}K`;
   return formatCurrency(val);
 }
 
+function inPeriodo(dateStr) {
+  if (!dateStr) return _periodo === 'total';
+  const [yyyy, mm] = dateStr.slice(0, 7).split('-').map(Number);
+  const now = new Date();
+  if (_periodo === 'mes') return yyyy === now.getFullYear() && mm === now.getMonth() + 1;
+  if (_periodo === 'ano') return yyyy === now.getFullYear();
+  return true;
+}
+
 export async function render(container) {
+  _container = container;
+  _periodo = 'mes';
   container.innerHTML = `<div class="empty-state">Carregando indicadores...</div>`;
 
   const [itens, atas, contratos, certidoes, faturamentos, recebimentos] = await Promise.all([
@@ -31,25 +46,40 @@ export async function render(container) {
     Service.listAllRecebimentos(),
   ]);
 
-  // ── Desempenho comercial ───────────────────────────────────────────────────
-  const decididos = itens.filter((i) => i.status !== 'Em disputa');
-  const ganhos = itens.filter((i) => i.status === 'Ganhou');
+  _data = { itens, atas, contratos, certidoes, faturamentos, recebimentos };
+  renderContent();
+}
+
+function renderContent() {
+  const { itens, atas, contratos, certidoes, faturamentos, recebimentos } = _data;
+
+  // ── Período ───────────────────────────────────────────────────────────────
+  const itensPeriodo = itens.filter((i) => inPeriodo(i.licitacao?.data_sessao));
+  const ganhosP = itensPeriodo.filter((i) => i.status === 'Ganhou');
+  const decididosP = itensPeriodo.filter((i) => i.status !== 'Em disputa');
+  const licDisputadasIds = [...new Set(itensPeriodo.map((i) => i.licitacao_id))];
+  const licGanhasIds = [...new Set(ganhosP.map((i) => i.licitacao_id))];
+  const valorArremP = sumBy(ganhosP, (i) => Number(i.valor_final || 0) * Number(i.quantidade || 0));
+  const taxaP = decididosP.length ? (ganhosP.length / decididosP.length) * 100 : 0;
+  const faturamentosP = faturamentos.filter((f) => f.situacao !== 'Cancelada' && inPeriodo(f.data_emissao));
+  const valorFaturadoP = sumBy(faturamentosP, (f) => Number(f.valor_fatura || 0));
+  const recebimentosP = recebimentos.filter((r) => inPeriodo(r.data_recebimento));
+  const valorRecebidoP = sumBy(recebimentosP, (r) => Number(r.valor || 0));
+
+  // ── Acumulado ─────────────────────────────────────────────────────────────
   const emDisputa = itens.filter((i) => i.status === 'Em disputa');
+  const ganhos = itens.filter((i) => i.status === 'Ganhou');
+  const decididos = itens.filter((i) => i.status !== 'Em disputa');
   const taxaExito = decididos.length ? (ganhos.length / decididos.length) * 100 : 0;
   const valorGanho = sumBy(ganhos, (i) => Number(i.valor_final || 0) * Number(i.quantidade || 0));
-
-  // ── Atas ───────────────────────────────────────────────────────────────────
   const atasVigentes = atas.filter((a) => a.situacao === 'Vigente');
   const valorAtasVigentes = sumBy(atasVigentes, (a) => Number(a.valor_total || 0));
-
-  // ── Faturamento em aberto ──────────────────────────────────────────────────
   const faturamentosAtivos = faturamentos.filter((f) => f.situacao !== 'Cancelada');
   const recebPorFatura = new Map();
   recebimentos.forEach((r) => recebPorFatura.set(r.faturamento_id, (recebPorFatura.get(r.faturamento_id) || 0) + Number(r.valor || 0)));
   const totalFaturado = sumBy(faturamentosAtivos, (f) => Number(f.valor_fatura || 0));
   const totalRecebido = [...recebPorFatura.values()].reduce((a, b) => a + b, 0);
   const totalEmAberto = Math.max(0, totalFaturado - totalRecebido);
-
   const faturasEmAberto = faturamentosAtivos
     .map((f) => {
       const receb = recebPorFatura.get(f.id) || 0;
@@ -59,7 +89,7 @@ export async function render(container) {
     .sort((a, b) => b.emAberto - a.emAberto)
     .slice(0, 6);
 
-  // ── Alertas (atas + contratos + certidões) ────────────────────────────────
+  // ── Alertas ───────────────────────────────────────────────────────────────
   const alertasAta = atasVigentes
     .map((a) => ({ tipo: 'Ata', titulo: a.numero_ata, meta: a.orgao?.nome || '-', data: a.vigencia_fim, alert: alertLevel(a.vigencia_fim) }))
     .filter((a) => a.alert);
@@ -71,13 +101,11 @@ export async function render(container) {
     .filter((c) => c.alert);
   const alertas = [...alertasAta, ...alertasContrato, ...alertasCertidao].sort((a, b) => a.alert.days - b.alert.days);
 
-  // ── Donut ─────────────────────────────────────────────────────────────────
+  // ── Gráficos ──────────────────────────────────────────────────────────────
   const statusCounts = groupBy(itens, (i) => i.status);
   const donutData = [...statusCounts.entries()].map(([status, list]) => ({
     label: status, value: list.length, color: STATUS_HEX[status] || '#94A3B8',
   }));
-
-  // ── Evolução mensal (últimos 6 meses) ─────────────────────────────────────
   const now = new Date();
   const meses = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
@@ -95,17 +123,92 @@ export async function render(container) {
     ),
   }));
 
+  // ── Labels ────────────────────────────────────────────────────────────────
   const hoje = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const periodoLabel = { mes: 'Este mês', ano: 'Este ano', total: 'Acumulado total' }[_periodo];
+  const periodoSub = _periodo === 'mes'
+    ? new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    : _periodo === 'ano' ? String(new Date().getFullYear()) : 'Todos os períodos';
 
-  container.innerHTML = `
+  const tabBtn = (p, lbl) =>
+    `<button class="periodo-tab${_periodo === p ? ' periodo-tab--active' : ''}" data-action="dashboard.setPeriodo" data-periodo="${p}">${lbl}</button>`;
+
+  _container.innerHTML = `
     <div class="page-header">
       <div>
         <h1>Dashboard</h1>
         <p>${hoje.charAt(0).toUpperCase() + hoje.slice(1)} · Visão geral do ciclo licitatório</p>
       </div>
+      <div class="periodo-tabs">
+        ${tabBtn('mes', 'Este mês')}
+        ${tabBtn('ano', 'Este ano')}
+        ${tabBtn('total', 'Total')}
+      </div>
     </div>
 
-    <div class="kpi-grid">
+    <div class="periodo-kpi-block">
+      <div class="periodo-kpi-label">${periodoLabel}<span> · ${periodoSub}</span></div>
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-card--periodo">
+          <div class="kpi-icon kpi-icon--blue">${ICONS.licitacoes}</div>
+          <div class="kpi-value">${licDisputadasIds.length}</div>
+          <div class="kpi-label">Pregões disputados</div>
+          <div class="kpi-foot">${itensPeriodo.length} itens participados</div>
+        </div>
+        <div class="kpi-card kpi-card--periodo">
+          <div class="kpi-icon kpi-icon--green">${ICONS.check}</div>
+          <div class="kpi-value">${licGanhasIds.length}</div>
+          <div class="kpi-label">Pregões ganhos</div>
+          <div class="kpi-foot">${decididosP.length ? taxaP.toFixed(0) + '% de êxito no período' : '—'}</div>
+        </div>
+        <div class="kpi-card kpi-card--periodo">
+          <div class="kpi-icon kpi-icon--indigo">${ICONS.empenhos}</div>
+          <div class="kpi-value">${fmtShort(valorArremP)}</div>
+          <div class="kpi-label">Valor arrematado</div>
+          <div class="kpi-foot">${ganhosP.length} itens ganhos</div>
+        </div>
+        <div class="kpi-card kpi-card--periodo">
+          <div class="kpi-icon kpi-icon--orange">${ICONS.faturamento}</div>
+          <div class="kpi-value">${fmtShort(valorFaturadoP)}</div>
+          <div class="kpi-label">Faturado</div>
+          <div class="kpi-foot">${faturamentosP.length} fatura(s) emitidas</div>
+        </div>
+        <div class="kpi-card kpi-card--periodo">
+          <div class="kpi-icon kpi-icon--purple">${ICONS.certidoes}</div>
+          <div class="kpi-value">${fmtShort(valorRecebidoP)}</div>
+          <div class="kpi-label">Recebido</div>
+          <div class="kpi-foot">${recebimentosP.length} pagamento(s)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="dash-card-header">
+          <div class="dash-card-title">Evolução mensal</div>
+          <div class="dash-card-subtitle">Valor ganho nos últimos 6 meses</div>
+        </div>
+        <canvas id="chart-evolucao" style="width:100%; height:220px;"></canvas>
+      </div>
+      <div class="card">
+        <div class="dash-card-header">
+          <div class="dash-card-title">Resultado dos itens</div>
+          <div class="dash-card-subtitle">Distribuição por status · ${itens.length} itens total</div>
+        </div>
+        <canvas id="chart-status" style="width:100%; height:180px;"></canvas>
+        <div class="donut-legend">
+          ${donutData.map((d) => `
+            <span class="donut-legend-item">
+              <span class="donut-legend-dot" style="background:${d.color}"></span>
+              ${d.label} <strong>${d.value}</strong>
+            </span>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-section-label">Visão geral · acumulado</div>
+    <div class="kpi-grid" style="margin-bottom: 18px;">
       <div class="kpi-card">
         <div class="kpi-icon kpi-icon--blue">${ICONS.licitacoes}</div>
         <div class="kpi-value">${emDisputa.length}</div>
@@ -138,32 +241,7 @@ export async function render(container) {
       </div>
     </div>
 
-    <div class="grid-2">
-      <div class="card">
-        <div class="dash-card-header">
-          <div class="dash-card-title">Evolução mensal</div>
-          <div class="dash-card-subtitle">Valor ganho nos últimos 6 meses</div>
-        </div>
-        <canvas id="chart-evolucao" style="width:100%; height:220px;"></canvas>
-      </div>
-      <div class="card">
-        <div class="dash-card-header">
-          <div class="dash-card-title">Resultado dos itens</div>
-          <div class="dash-card-subtitle">Distribuição por status · ${itens.length} itens total</div>
-        </div>
-        <canvas id="chart-status" style="width:100%; height:180px;"></canvas>
-        <div class="donut-legend">
-          ${donutData.map((d) => `
-            <span class="donut-legend-item">
-              <span class="donut-legend-dot" style="background:${d.color}"></span>
-              ${d.label} <strong>${d.value}</strong>
-            </span>
-          `).join('')}
-        </div>
-      </div>
-    </div>
-
-    <div class="grid-2" style="margin-top:18px;">
+    <div class="grid-2" style="margin-top:0;">
       <div class="card">
         <div class="dash-card-header">
           <div class="dash-card-title">Alertas de vencimento</div>
@@ -212,4 +290,9 @@ export async function render(container) {
   drawDonutChart(byId('chart-status'), donutData, { centerLabel: String(itens.length) });
 }
 
-export const actions = {};
+export const actions = {
+  'dashboard.setPeriodo': (target) => {
+    _periodo = target.dataset.periodo;
+    renderContent();
+  },
+};
