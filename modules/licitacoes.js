@@ -31,29 +31,81 @@ export async function render(container) {
       ${canWrite() ? `<button class="btn btn-primary" data-action="licitacoes.novo">${ICONS.plus}Nova Licitação</button>` : ''}
     </div>
 
-    <div class="card" style="margin-bottom:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-      <div class="form-field" style="flex:1; min-width:220px; margin:0;">
-        <input type="text" id="lic-filtro-busca" placeholder="Buscar por pregão, processo ou órgão..." />
+    <div class="card no-sticky" style="margin-bottom:16px;">
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+        <div class="form-field" style="flex:2; min-width:260px; margin:0;">
+          <label>Buscar</label>
+          <input type="text" id="lic-filtro-busca" placeholder="Pregão, processo, órgão ou objeto..." />
+        </div>
+        <div class="form-field" style="min-width:90px; margin:0;">
+          <label>UF</label>
+          <select id="lic-filtro-uf"><option value="">Todas</option></select>
+        </div>
+        <div class="form-field" style="min-width:170px; margin:0;">
+          <label>Modalidade</label>
+          <select id="lic-filtro-modalidade">
+            <option value="">Todas</option>
+            ${MODALIDADES.map((m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-field" style="flex:1; min-width:170px; margin:0;">
+          <label>Órgão</label>
+          <select id="lic-filtro-orgao"><option value="">Todos</option></select>
+        </div>
+        <div class="form-field" style="min-width:155px; margin:0;">
+          <label>Status do item</label>
+          <select id="lic-filtro-status">
+            <option value="">Qualquer</option>
+            ${STATUS_LICITACAO.map((s) => `<option value="${s}">${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-field" style="min-width:140px; margin:0;">
+          <label>Tag</label>
+          <select id="lic-filtro-tag"><option value="">Todas</option></select>
+        </div>
+        <div class="form-field" style="min-width:138px; margin:0;">
+          <label>Abertura de</label>
+          <input type="date" id="lic-filtro-data-ini" />
+        </div>
+        <div class="form-field" style="min-width:138px; margin:0;">
+          <label>Abertura até</label>
+          <input type="date" id="lic-filtro-data-fim" />
+        </div>
+        <div class="form-field" style="min-width:145px; margin:0;">
+          <label>Habilitação</label>
+          <select id="lic-filtro-hab">
+            <option value="">Qualquer</option>
+            <option value="Aguardando">Aguardando</option>
+            <option value="Habilitado">Habilitado</option>
+            <option value="Inabilitado">Inabilitado</option>
+          </select>
+        </div>
+        <div class="form-field" style="min-width:155px; margin:0;">
+          <label>Monitoramento</label>
+          <select id="lic-filtro-mon">
+            <option value="">Qualquer</option>
+            <option value="Em andamento">Em andamento</option>
+            <option value="Encerrado">Encerrado</option>
+            <option value="Suspenso">Suspenso</option>
+          </select>
+        </div>
+        <div style="align-self:flex-end; padding-bottom:1px; flex-shrink:0;">
+          <button class="btn btn-ghost btn-sm" data-action="licitacoes.limparFiltros">Limpar</button>
+        </div>
       </div>
-      <div class="form-field" style="margin:0; min-width:160px;">
-        <select id="lic-filtro-status">
-          <option value="">Todos os status</option>
-          ${STATUS_LICITACAO.map((s) => `<option value="${s}">${s}</option>`).join('')}
-        </select>
-      </div>
-      <div class="form-field" style="margin:0; min-width:150px;">
-        <select id="lic-filtro-tag">
-          <option value="">Todas as tags</option>
-        </select>
-      </div>
+      <div id="lic-filtro-resumo" style="margin-top:8px; font-size:12px; color:var(--gray-500); min-height:16px;"></div>
     </div>
 
     <div id="lic-cards-container"></div>
   `;
 
-  byId('lic-filtro-busca').addEventListener('input', renderCards);
-  byId('lic-filtro-status').addEventListener('change', renderCards);
-  byId('lic-filtro-tag').addEventListener('change', renderCards);
+  const inputs = ['lic-filtro-busca','lic-filtro-uf','lic-filtro-modalidade','lic-filtro-orgao',
+    'lic-filtro-status','lic-filtro-tag','lic-filtro-data-ini','lic-filtro-data-fim',
+    'lic-filtro-hab','lic-filtro-mon'];
+  inputs.forEach((id) => {
+    const el = byId(id);
+    if (el) el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', renderCards);
+  });
 
   await reload();
 }
@@ -91,26 +143,58 @@ async function reload() {
   }
   for (const arr of agendaByLicitacao.values()) arr.sort((a, b) => (a.data > b.data ? 1 : -1));
 
-  populateTagFilterOptions();
+  populateFilterSelects();
   renderCards();
 }
 
-function populateTagFilterOptions() {
-  const select = byId('lic-filtro-tag');
-  if (!select) return;
-  const current = select.value;
-  select.innerHTML = `<option value="">Todas as tags</option>${getState().lookups.tags.map((t) => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('')}`;
-  select.value = current;
+function populateFilterSelects() {
+  const saveVal = (id) => byId(id)?.value || '';
+  const setVal = (id, v) => { const el = byId(id); if (el) el.value = v; };
+
+  // Tags
+  const tagSel = byId('lic-filtro-tag');
+  if (tagSel) {
+    const prev = tagSel.value;
+    tagSel.innerHTML = `<option value="">Todas as tags</option>${getState().lookups.tags.map((t) => `<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('')}`;
+    tagSel.value = prev;
+  }
+
+  // UFs presentes na base
+  const ufsNoCache = [...new Set(cache.map((l) => l.uf).filter(Boolean))].sort();
+  const ufSel = byId('lic-filtro-uf');
+  if (ufSel) {
+    const prev = saveVal('lic-filtro-uf');
+    ufSel.innerHTML = `<option value="">Todas</option>${ufsNoCache.map((u) => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('')}`;
+    setVal('lic-filtro-uf', prev);
+  }
+
+  // Órgãos presentes na base
+  const orgaoMap = new Map();
+  cache.forEach((l) => { if (l.orgao?.id) orgaoMap.set(l.orgao.id, l.orgao.nome); });
+  const orgaos = [...orgaoMap.entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
+  const orgaoSel = byId('lic-filtro-orgao');
+  if (orgaoSel) {
+    const prev = saveVal('lic-filtro-orgao');
+    orgaoSel.innerHTML = `<option value="">Todos</option>${orgaos.map(([id, nome]) => `<option value="${id}">${escapeHtml(nome)}</option>`).join('')}`;
+    setVal('lic-filtro-orgao', prev);
+  }
 }
 
 function renderCards() {
-  const busca = (byId('lic-filtro-busca')?.value || '').toLowerCase();
+  const busca        = (byId('lic-filtro-busca')?.value || '').toLowerCase();
   const statusFiltro = byId('lic-filtro-status')?.value || '';
-  const tagFiltro = byId('lic-filtro-tag')?.value || '';
+  const tagFiltro    = byId('lic-filtro-tag')?.value || '';
+  const ufFiltro     = byId('lic-filtro-uf')?.value || '';
+  const modFiltro    = byId('lic-filtro-modalidade')?.value || '';
+  const orgFiltro    = byId('lic-filtro-orgao')?.value || '';
+  const dataIni      = byId('lic-filtro-data-ini')?.value || '';
+  const dataFim      = byId('lic-filtro-data-fim')?.value || '';
+  const habFiltro    = byId('lic-filtro-hab')?.value || '';
+  const monFiltro    = byId('lic-filtro-mon')?.value || '';
 
   const filtradas = cache.filter((l) => {
     if (busca) {
-      const haystack = `${l.numero_pregao} ${l.numero_processo || ''} ${l.orgao?.nome || ''}`.toLowerCase();
+      const haystack = `${l.numero_pregao} ${l.numero_processo || ''} ${l.orgao?.nome || ''} ${l.objeto || ''}`.toLowerCase();
       if (!haystack.includes(busca)) return false;
     }
     if (statusFiltro) {
@@ -121,15 +205,30 @@ function renderCards() {
       const tags = tagsByLicitacao.get(l.id) || [];
       if (!tags.some((t) => String(t.id) === String(tagFiltro))) return false;
     }
+    if (ufFiltro && l.uf !== ufFiltro) return false;
+    if (modFiltro && l.modalidade !== modFiltro) return false;
+    if (orgFiltro && String(l.orgao?.id) !== orgFiltro) return false;
+    if (dataIni || dataFim) {
+      const dataRef = (l.data_abertura || l.data_sessao || '').slice(0, 10);
+      if (dataIni && dataRef < dataIni) return false;
+      if (dataFim && dataRef > dataFim) return false;
+    }
+    if (habFiltro && (l.habilitacao_status || 'Aguardando') !== habFiltro) return false;
+    if (monFiltro && (l.monitoramento_status || 'Em andamento') !== monFiltro) return false;
     return true;
   });
+
+  const resumo = byId('lic-filtro-resumo');
+  if (resumo) {
+    const temFiltro = busca || statusFiltro || tagFiltro || ufFiltro || modFiltro || orgFiltro || dataIni || dataFim || habFiltro || monFiltro;
+    resumo.textContent = temFiltro ? `${filtradas.length} de ${cache.length} licitações` : '';
+  }
 
   const wrap = byId('lic-cards-container');
   if (!filtradas.length) {
     wrap.innerHTML = `<div class="card">${renderEmptyState('Nenhuma licitação encontrada.')}</div>`;
     return;
   }
-
   wrap.innerHTML = filtradas.map(cardHtml).join('');
 }
 
@@ -1199,6 +1298,15 @@ export const actions = {
   'licitacoes.salvarLembrete': (target) => salvarLembrete(target),
   'licitacoes.resultado': (target) => abrirResultado(target),
   'licitacoes.salvarResultado': () => salvarResultado(),
+  'licitacoes.limparFiltros': () => {
+    ['lic-filtro-busca','lic-filtro-uf','lic-filtro-modalidade','lic-filtro-orgao',
+      'lic-filtro-status','lic-filtro-tag','lic-filtro-data-ini','lic-filtro-data-fim',
+      'lic-filtro-hab','lic-filtro-mon'].forEach((id) => {
+      const el = byId(id);
+      if (el) el.tagName === 'INPUT' ? (el.value = '') : (el.selectedIndex = 0);
+    });
+    renderCards();
+  },
   'licitacoes.habilitacao': (target) => abrirHabilitacao(target),
   'licitacoes.salvarHabilitacao': (target) => salvarHabilitacao(target),
   'licitacoes.toggleHabImpugnacao': () => { const c = byId('hab-impugnacao')?.checked; byId('hab-impugnacao-obs-field')?.toggleAttribute('hidden', !c); },
