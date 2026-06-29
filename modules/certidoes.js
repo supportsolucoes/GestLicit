@@ -1,6 +1,6 @@
 import * as Service from '../supabase-service.js';
 import { buildCrudModule } from './_crud.js';
-import { TIPOS_CERTIDAO } from '../constants.js';
+import { TIPOS_CERTIDAO, ICONS } from '../constants.js';
 import { formatDate, alertLevel } from '../helpers.js';
 import { badge } from '../ui.js';
 
@@ -11,6 +11,37 @@ const mod = buildCrudModule({
   singular: 'Certidão',
   description: 'Documentos de regularidade fiscal e trabalhista da própria empresa, com alerta de vencimento.',
   searchKeys: ['tipo', 'numero'],
+  kpiFn: (records) => {
+    const regulares = records.filter((r) => !alertLevel(r.data_validade));
+    const a30d = records.filter((r) => { const al = alertLevel(r.data_validade); return al && al.level !== 'vencido' && al.days <= 30; });
+    const vencidas = records.filter((r) => alertLevel(r.data_validade)?.level === 'vencido');
+    return `
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--blue">${ICONS.certidoes}</div>
+        <div class="kpi-value">${records.length}</div>
+        <div class="kpi-label">Total cadastradas</div>
+        <div class="kpi-foot">certidões monitoradas</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--green">${ICONS.check}</div>
+        <div class="kpi-value">${regulares.length}</div>
+        <div class="kpi-label">Regulares</div>
+        <div class="kpi-foot">dentro do prazo</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--amber">${ICONS.agenda}</div>
+        <div class="kpi-value">${a30d.length}</div>
+        <div class="kpi-label">Vencendo em 30 dias</div>
+        <div class="kpi-foot">requer renovação</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--danger">${ICONS.close}</div>
+        <div class="kpi-value">${vencidas.length}</div>
+        <div class="kpi-label">Vencidas</div>
+        <div class="kpi-foot">prazo encerrado</div>
+      </div>
+    `;
+  },
   columns: [
     { key: 'tipo', label: 'Tipo' },
     { key: 'numero', label: 'Número' },

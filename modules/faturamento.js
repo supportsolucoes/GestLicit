@@ -25,6 +25,7 @@ export async function render(container, params) {
       </div>
       ${canWrite() ? `<button class="btn btn-primary" data-action="faturamento.novo">${ICONS.plus}Nova Fatura</button>` : ''}
     </div>
+    <div id="faturamento-kpi" class="kpi-grid kpi-grid-4 page-entering" style="margin-bottom:20px;"></div>
     ${activeFilter ? `
       <div class="card filter-banner">
         <span>Filtrando por: ${escapeHtml(activeFilter.label || '')}</span>
@@ -50,7 +51,50 @@ async function reload() {
   const [faturas, recebimentos] = await Promise.all([Service.listFaturamentos(), Service.listAllRecebimentos()]);
   cache = faturas;
   recebimentosCache = recebimentos;
+  renderKpis();
   renderTable();
+}
+
+function renderKpis() {
+  const kpiEl = byId('faturamento-kpi');
+  if (!kpiEl) return;
+  const ativas = cache.filter((f) => f.situacao !== 'Cancelada');
+  const recebPorFatura = new Map();
+  recebimentosCache.forEach((r) => recebPorFatura.set(r.faturamento_id, (recebPorFatura.get(r.faturamento_id) || 0) + Number(r.valor || 0)));
+  const saldos = ativas.map((f) => {
+    const rec = recebPorFatura.get(f.id) || 0;
+    const emAberto = Math.max(0, Number(f.valor_fatura || 0) - rec);
+    return { emAberto, pago: emAberto < 0.01 };
+  });
+  const totalEmAberto = saldos.reduce((s, x) => s + x.emAberto, 0);
+  const pagas = saldos.filter((x) => x.pago).length;
+  const emAberto = saldos.filter((x) => !x.pago).length;
+  kpiEl.innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-icon--blue">${ICONS.faturamento}</div>
+      <div class="kpi-value">${ativas.length}</div>
+      <div class="kpi-label">Faturas ativas</div>
+      <div class="kpi-foot">${cache.length} no total</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-icon--amber">${ICONS.empenhos}</div>
+      <div class="kpi-value">${emAberto}</div>
+      <div class="kpi-label">Em aberto</div>
+      <div class="kpi-foot">aguardando recebimento</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-icon--green">${ICONS.check}</div>
+      <div class="kpi-value">${pagas}</div>
+      <div class="kpi-label">Pagas</div>
+      <div class="kpi-foot">recebimento concluído</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-icon--danger">${ICONS.faturamento}</div>
+      <div class="kpi-value" style="font-family:'Source Serif 4',Georgia,serif;font-size:18px;">${formatCurrency(totalEmAberto)}</div>
+      <div class="kpi-label">Valor a receber</div>
+      <div class="kpi-foot">total em aberto</div>
+    </div>
+  `;
 }
 
 function renderTable() {

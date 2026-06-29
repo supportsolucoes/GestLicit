@@ -143,20 +143,19 @@ function cardHtml(l) {
 
   const eventos = agendaByLicitacao.get(l.id) || [];
   const agendaHtml = eventos.length
-    ? eventos.slice(0, 4).map((ev) => {
+    ? eventos.slice(0, 3).map((ev) => {
         const dias = daysUntil(ev.data);
         const urgente = dias !== null && dias >= 0 && dias <= 7;
         const vencido = dias !== null && dias < 0;
         const diasLabel = dias === null ? '' : vencido ? 'vencido' : dias === 0 ? 'hoje' : `${dias}d`;
         const diasColor = vencido ? 'var(--danger)' : urgente ? 'var(--warning)' : 'var(--gray-500)';
+        const dotClass = vencido ? ' danger' : urgente ? ' warning' : '';
         return `<div class="lic-agenda-item">
-          <div class="lic-agenda-dot"></div>
-          <div>
-            <strong>${escapeHtml(ev.titulo)}</strong>
-            <span>${formatDate(ev.data)}${diasLabel ? ` · <span style="color:${diasColor};font-weight:600;">${diasLabel}</span>` : ''}</span>
-          </div>
+          <div class="lic-agenda-dot${dotClass}"></div>
+          <span class="lic-agenda-titulo">${escapeHtml(ev.titulo)}</span>
+          <span class="lic-agenda-data">${formatDate(ev.data)}${diasLabel ? ` · <span style="color:${diasColor};font-weight:600;">${diasLabel}</span>` : ''}</span>
         </div>`;
-      }).join('')
+      }).join('') + (eventos.length > 3 ? `<span class="lic-agenda-mais">+${eventos.length - 3} mais</span>` : '')
     : `<span class="lic-agenda-empty">Nenhum lembrete vinculado.</span>`;
 
   return `

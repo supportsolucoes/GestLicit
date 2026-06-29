@@ -960,4 +960,10 @@ alter table public.licitacoes
   add column if not exists exige_atestado      boolean default false,
   add column if not exists percentual_atestado numeric(5,2) default 50;
 
+-- ALTERAÇÕES v1.13 — Campos de embalagem e fator caixa em produtos
+alter table public.produtos
+  add column if not exists qtd_embalagem  numeric(14,2),
+  add column if not exists unidade_medida text,
+  add column if not exists fator_caixa    numeric(14,4);
+
 notify pgrst, 'reload schema';

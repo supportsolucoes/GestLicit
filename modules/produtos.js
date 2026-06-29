@@ -9,17 +9,38 @@ let acervoCache = [];
 let acervoProdutoId = null;
 let acervoProdutoNome = '';
 
+const UNIDADES_MEDIDA = [
+  { value: '', label: 'Selecione...' },
+  { value: 'UN', label: 'UN — Unidade' },
+  { value: 'ML', label: 'ML — Mililitro' },
+  { value: 'LT', label: 'LT — Litro' },
+  { value: 'G', label: 'G — Grama' },
+  { value: 'KG', label: 'KG — Quilograma' },
+  { value: 'M', label: 'M — Metro' },
+  { value: 'M²', label: 'M² — Metro quadrado' },
+  { value: 'CX', label: 'CX — Caixa' },
+  { value: 'PCT', label: 'PCT — Pacote' },
+];
+
 const mod = buildCrudModule({
   actionPrefix: 'produtos',
   service: Service.Produtos,
   title: 'Produtos',
   singular: 'Produto',
-  description: 'Catálogo de produtos: código, fabricante e preço de custo.',
+  description: 'Catálogo de produtos: código, fabricante, embalagem e preço de custo.',
   searchKeys: ['nome', 'fabricante', 'codigo_sinc'],
+  gridCols: 3,
+  modalSize: 'lg',
   columns: [
     { key: 'codigo_sinc', label: 'Código' },
     { key: 'nome', label: 'Nome' },
     { key: 'fabricante', label: 'Fabricante' },
+    { key: 'embalagem', label: 'Embalagem', render: (r) => {
+      const qtd = r.qtd_embalagem ? formatNumber(r.qtd_embalagem, 0) : '';
+      const un = r.unidade_medida || '';
+      return [qtd, un].filter(Boolean).join(' ') || '—';
+    }},
+    { key: 'fator_caixa', label: 'Fator cx', render: (r) => r.fator_caixa ? `×${formatNumber(r.fator_caixa, 0)}` : '—' },
     { key: 'preco_custo', label: 'Preço de custo', render: (r) => formatCurrency(r.preco_custo) },
   ],
   fields: [
@@ -27,7 +48,10 @@ const mod = buildCrudModule({
     { key: 'nome', label: 'Nome do Produto', required: true, span: 2 },
     { key: 'fabricante', label: 'Fabricante' },
     { key: 'preco_custo', label: 'Preço de custo', type: 'currency' },
-    { key: 'sinonimos', label: 'Nomes similares (separados por vírgula)', type: 'tags', span: 2 },
+    { key: 'fator_caixa', label: 'Fator caixa fechada', type: 'number', placeholder: 'Ex: 12' },
+    { key: 'qtd_embalagem', label: 'Qtd. por embalagem', type: 'number', placeholder: 'Ex: 1000' },
+    { key: 'unidade_medida', label: 'Unidade de medida', type: 'select', options: UNIDADES_MEDIDA },
+    { key: 'sinonimos', label: 'Nomes similares (separados por vírgula)', type: 'tags', span: 3 },
   ],
   afterChange: refreshLookups,
   extraRowActions: (r) => `<button class="icon-btn" data-action="produtos.acervo" data-id="${r.id}" data-nome="${escapeHtml(r.nome)}" title="Acervo Técnico">${ICONS.certidoes}</button>`,

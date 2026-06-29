@@ -39,9 +39,36 @@ function filteredCache() {
 // ============================================================
 // LISTA
 // ============================================================
+function vigenciaPerc(inicio, fim) {
+  if (!inicio || !fim) return 0;
+  const s = new Date(inicio + 'T00:00:00').getTime();
+  const e = new Date(fim + 'T00:00:00').getTime();
+  const n = Date.now();
+  if (n <= s) return 0;
+  if (n >= e) return 100;
+  return Math.min(((n - s) / (e - s)) * 100, 100);
+}
+
+function vigenciaFillClass(fim, situacao) {
+  if (situacao !== 'Vigente') return 'muted';
+  const al = alertLevel(fim);
+  if (!al) return '';
+  return al.level === 'vencido' ? 'danger' : 'warning';
+}
+
+function dtShort(d) {
+  return d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
+}
+
 async function renderListView() {
   view = 'list';
   cache = await Service.listAtas();
+
+  const vigentes = cache.filter((a) => a.situacao === 'Vigente');
+  const valorTotal = vigentes.reduce((s, a) => s + (Number(a.valor_total) || 0), 0);
+  const a30d = vigentes.filter((a) => { const al = alertLevel(a.vigencia_fim); return al && al.level !== 'vencido' && al.days <= 30; }).length;
+  const vencidas = vigentes.filter((a) => alertLevel(a.vigencia_fim)?.level === 'vencido').length;
+
   pageContainer.innerHTML = `
     <div class="page-header">
       <div>
@@ -50,13 +77,41 @@ async function renderListView() {
       </div>
       ${canWrite() ? `<button class="btn btn-primary" data-action="atas.novo">${ICONS.plus}Nova Ata</button>` : ''}
     </div>
+
+    <div class="kpi-grid kpi-grid-4 page-entering">
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--green">${ICONS.atas}</div>
+        <div class="kpi-value">${vigentes.length}</div>
+        <div class="kpi-label">Vigentes</div>
+        <div class="kpi-foot">${cache.length} cadastradas no total</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--blue">${ICONS.empenhos}</div>
+        <div class="kpi-value" style="font-family:'Source Serif 4',Georgia,serif;font-size:18px;">${formatCurrency(valorTotal)}</div>
+        <div class="kpi-label">Valor total vigentes</div>
+        <div class="kpi-foot">soma dos valores cadastrados</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--amber">${ICONS.agenda}</div>
+        <div class="kpi-value">${a30d}</div>
+        <div class="kpi-label">Vencendo em 30 dias</div>
+        <div class="kpi-foot">requer atenção</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon--danger">${ICONS.close}</div>
+        <div class="kpi-value">${vencidas}</div>
+        <div class="kpi-label">Prazo vencido</div>
+        <div class="kpi-foot">ainda marcadas como Vigente</div>
+      </div>
+    </div>
+
     ${activeFilter ? `
       <div class="card filter-banner">
         <span>Filtrando por: ${escapeHtml(activeFilter.label || '')}</span>
         <button type="button" class="btn btn-ghost btn-sm" data-action="atas.limparFiltro">Limpar filtro</button>
       </div>
     ` : ''}
-    <div class="card table-wrap"><div id="ata-table-container"></div></div>
+    <div class="card" style="padding:0; overflow:hidden;"><div id="ata-table-container"></div></div>
   `;
   renderTable();
 }
@@ -65,34 +120,36 @@ function renderTable() {
   const wrap = byId('ata-table-container');
   const lista = filteredCache();
   if (!lista.length) {
-    wrap.innerHTML = renderEmptyState(activeFilter ? 'Nenhuma ata encontrada para este filtro.' : 'Nenhuma ata cadastrada.');
+    wrap.innerHTML = `<div style="padding:20px;">${renderEmptyState(activeFilter ? 'Nenhuma ata encontrada para este filtro.' : 'Nenhuma ata cadastrada.')}</div>`;
     return;
   }
-  wrap.innerHTML = `
-    <table class="data-table">
-      <thead><tr><th>Nº da Ata</th><th>Órgão</th><th>Vigência</th><th>Situação</th><th>Valor Total</th><th></th></tr></thead>
-      <tbody>
-        ${lista.map((a) => {
-          const alert = a.situacao === 'Vigente' ? alertLevel(a.vigencia_fim) : null;
-          return `
-          <tr>
-            <td><strong>${escapeHtml(a.numero_ata)}</strong></td>
-            <td>${escapeHtml(a.orgao?.nome || '-')}</td>
-            <td>${formatDate(a.vigencia_inicio)} – ${formatDate(a.vigencia_fim)}
-              ${alert ? `<br/>${badge(alert.level === 'vencido' ? 'Vencido' : `Vence em ${alert.days}d`, alert.level === 'vencido' ? 'danger' : 'warning')}` : ''}
-            </td>
-            <td>${badge(a.situacao, STATUS_COLOR[a.situacao] || 'muted')}</td>
-            <td>${formatCurrency(a.valor_total)}</td>
-            <td class="row-actions">
-              <button class="icon-btn" data-action="atas.verItens" data-id="${a.id}" title="Itens e saldo">${ICONS.atas}</button>
-              <button class="icon-btn" data-action="atas.editarHeader" data-id="${a.id}" title="Editar">${ICONS.edit}</button>
-              ${isAdmin() ? `<button class="icon-btn" data-action="atas.excluir" data-id="${a.id}" title="Excluir">${ICONS.trash}</button>` : ''}
-            </td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-  `;
+  wrap.innerHTML = lista.map((a) => {
+    const perc = vigenciaPerc(a.vigencia_inicio, a.vigencia_fim);
+    const fillClass = vigenciaFillClass(a.vigencia_fim, a.situacao);
+    return `
+      <div class="record">
+        <div class="record-main">
+          <div class="record-id">
+            <span class="num">${escapeHtml(a.numero_ata)}</span>
+            ${badge(a.situacao, STATUS_COLOR[a.situacao] || 'muted')}
+          </div>
+          <p class="record-org">${escapeHtml(a.orgao?.nome || '—')}</p>
+          <div class="vigencia">
+            <div class="vigencia-track"><div class="vigencia-fill ${fillClass}" style="width:${perc.toFixed(1)}%"></div></div>
+            <span class="vigencia-dates">${dtShort(a.vigencia_inicio)} → ${dtShort(a.vigencia_fim)}</span>
+          </div>
+        </div>
+        <div class="record-side">
+          <p class="record-value">${formatCurrency(a.valor_total)}</p>
+          <div class="record-actions">
+            <button class="icon-btn" data-action="atas.verItens" data-id="${a.id}" title="Itens e saldo">${ICONS.atas}</button>
+            <button class="icon-btn" data-action="atas.editarHeader" data-id="${a.id}" title="Editar">${ICONS.edit}</button>
+            ${isAdmin() ? `<button class="icon-btn" data-action="atas.excluir" data-id="${a.id}" title="Excluir">${ICONS.trash}</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 // ============================================================

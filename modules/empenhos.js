@@ -28,6 +28,7 @@ export async function render(container, params) {
       </div>
       ${canWrite() ? `<button class="btn btn-primary" data-action="empenhos.novo">${ICONS.plus}Novo Empenho</button>` : ''}
     </div>
+    <div id="empenhos-kpi" class="kpi-grid kpi-grid-4 page-entering" style="margin-bottom:20px;"></div>
     ${activeFilter ? `
       <div class="card filter-banner">
         <span>Filtrando por: ${escapeHtml(activeFilter.label || '')}</span>
@@ -69,7 +70,43 @@ async function reload() {
     entregasByItemId.set(ent.empenho_item_id, arr);
   }
 
+  renderKpis();
   renderTable();
+}
+
+function renderKpis() {
+  const kpiEl = byId('empenhos-kpi');
+  if (!kpiEl) return;
+  const vigentes = cache.filter((e) => e.situacao === 'Vigente');
+  const valorTotal = cache.reduce((s, e) => s + (Number(e.valor_empenhado) || 0), 0);
+  const totalItens = [...itensByEmpenho.values()].reduce((s, arr) => s + arr.length, 0);
+  const percMedio = cache.length ? (cache.reduce((s, e) => s + saldoEmpenho(e.id).percentual, 0) / cache.length) : 0;
+  kpiEl.innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-icon--green">${ICONS.empenhos}</div>
+      <div class="kpi-value">${vigentes.length}</div>
+      <div class="kpi-label">Vigentes</div>
+      <div class="kpi-foot">${cache.length} empenhos no total</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-icon--blue">${ICONS.faturamento}</div>
+      <div class="kpi-value" style="font-family:'Source Serif 4',Georgia,serif;font-size:18px;">${formatCurrency(valorTotal)}</div>
+      <div class="kpi-label">Valor total empenhado</div>
+      <div class="kpi-foot">soma dos valores</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-icon--purple">${ICONS.produtos}</div>
+      <div class="kpi-value">${totalItens}</div>
+      <div class="kpi-label">Itens empenhados</div>
+      <div class="kpi-foot">em ${cache.length} empenho(s)</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-icon--amber">${ICONS.agenda}</div>
+      <div class="kpi-value">${percMedio.toFixed(0)}%</div>
+      <div class="kpi-label">% médio entregue</div>
+      <div class="kpi-foot">sobre itens com entregas</div>
+    </div>
+  `;
 }
 
 function origemLabel(e) {

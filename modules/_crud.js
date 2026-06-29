@@ -12,7 +12,7 @@ function fieldValue(field, record) {
 function renderField(field, record) {
   const value = fieldValue(field, record);
   const id = `f-${field.key}`;
-  const spanClass = field.span === 2 ? ' span-2' : '';
+  const spanClass = field.span ? ` span-${field.span}` : '';
 
   let inputHtml;
   if (field.type === 'select') {
@@ -28,7 +28,7 @@ function renderField(field, record) {
   } else if (field.type === 'date') {
     inputHtml = `<input type="date" id="${id}" value="${escapeHtml(value)}" />`;
   } else if (field.type === 'number') {
-    inputHtml = `<input type="text" id="${id}" value="${escapeHtml(value)}" />`;
+    inputHtml = `<input type="text" id="${id}" value="${escapeHtml(value)}" ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''} />`;
   } else if (field.type === 'currency') {
     inputHtml = `<div class="input-currency-wrap"><input type="text" id="${id}" value="${formatMoneyInputValue(value)}" placeholder="0,00" /></div>`;
   } else if (field.type === 'file') {
@@ -70,6 +70,7 @@ export function buildCrudModule(config) {
         <div><h1>${config.title}</h1><p>${config.description || ''}</p></div>
         ${canWrite() ? `<button class="btn btn-primary" data-action="${config.actionPrefix}.novo">${ICONS.plus}Novo</button>` : ''}
       </div>
+      ${config.kpiFn ? `<div id="${config.actionPrefix}-kpi-strip" class="kpi-grid kpi-grid-4 page-entering" style="margin-bottom:20px;"></div>` : ''}
       <div class="card" style="margin-bottom:16px;">
         <div class="form-field" style="max-width:360px; margin:0;">
           <input type="text" id="${config.actionPrefix}-busca" placeholder="Buscar..." />
@@ -79,6 +80,10 @@ export function buildCrudModule(config) {
     `;
     byId(`${config.actionPrefix}-busca`).addEventListener('input', renderTable);
     await reload();
+    if (config.kpiFn) {
+      const kpiEl = byId(`${config.actionPrefix}-kpi-strip`);
+      if (kpiEl) kpiEl.innerHTML = config.kpiFn(cache);
+    }
     renderTable();
   }
 
@@ -111,7 +116,8 @@ export function buildCrudModule(config) {
 
   async function abrirFormulario(id) {
     const record = id ? cache.find((r) => r.id === id) : null;
-    const bodyHtml = `<div class="form-grid">${config.fields.map((f) => renderField(f, record)).join('')}</div>`;
+    const gridClass = `form-grid${config.gridCols ? ` cols-${config.gridCols}` : ''}`;
+    const bodyHtml = `<div class="${gridClass}">${config.fields.map((f) => renderField(f, record)).join('')}</div>`;
     openModal(id ? `Editar ${config.singular || config.title}` : `Novo ${config.singular || config.title}`, bodyHtml, {
       size: config.modalSize || 'md',
       footerHtml: `

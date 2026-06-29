@@ -14,6 +14,27 @@ let editingArquivoFile = null;
 let pageContainer = null;
 let activeFilter = null;
 
+function vigenciaPerc(inicio, fim) {
+  if (!inicio || !fim) return 0;
+  const s = new Date(inicio + 'T00:00:00').getTime();
+  const e = new Date(fim + 'T00:00:00').getTime();
+  const n = Date.now();
+  if (n <= s) return 0;
+  if (n >= e) return 100;
+  return Math.min(((n - s) / (e - s)) * 100, 100);
+}
+
+function vigenciaFillClass(fim, situacao) {
+  if (situacao !== 'Vigente') return 'muted';
+  const al = alertLevel(fim);
+  if (!al) return '';
+  return al.level === 'vencido' ? 'danger' : 'warning';
+}
+
+function dtShort(d) {
+  return d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
+}
+
 export async function render(container, params) {
   pageContainer = container;
   activeFilter = params?.filter || null;
@@ -25,13 +46,14 @@ export async function render(container, params) {
       </div>
       ${canWrite() ? `<button class="btn btn-primary" data-action="contratos.novo">${ICONS.plus}Novo Contrato</button>` : ''}
     </div>
+    <div id="contratos-kpi" class="kpi-grid kpi-grid-4 page-entering" style="margin-bottom:20px;"></div>
     ${activeFilter ? `
       <div class="card filter-banner">
         <span>Filtrando por: ${escapeHtml(activeFilter.label || '')}</span>
         <button type="button" class="btn btn-ghost btn-sm" data-action="contratos.limparFiltro">Limpar filtro</button>
       </div>
     ` : ''}
-    <div class="card table-wrap"><div id="contrato-table-container"></div></div>
+    <div class="card" style="padding:0; overflow:hidden;"><div id="contrato-table-container"></div></div>
   `;
   await reload();
   if (params?.openId) await abrirFormulario(params.openId);
@@ -55,7 +77,43 @@ async function reload() {
     arr.push(item);
     itensByContrato.set(item.contrato_id, arr);
   }
+  renderKpis();
   renderTable();
+}
+
+function renderKpis() {
+  const kpiEl = byId('contratos-kpi');
+  if (!kpiEl) return;
+  const vigentes = cache.filter((c) => c.situacao === 'Vigente');
+  const valorTotal = vigentes.reduce((s, c) => s + (Number(c.valor_contrato) || valorTotalContrato(c.id)), 0);
+  const a30d = vigentes.filter((c) => { const al = alertLevel(c.vigencia_fim); return al && al.level !== 'vencido' && al.days <= 30; }).length;
+  const vencidos = vigentes.filter((c) => alertLevel(c.vigencia_fim)?.level === 'vencido').length;
+  kpiEl.innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-icon--green">${ICONS.contratos}</div>
+      <div class="kpi-value">${vigentes.length}</div>
+      <div class="kpi-label">Vigentes</div>
+      <div class="kpi-foot">${cache.length} cadastrados no total</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-icon--blue">${ICONS.empenhos}</div>
+      <div class="kpi-value" style="font-family:'Source Serif 4',Georgia,serif;font-size:18px;">${formatCurrency(valorTotal)}</div>
+      <div class="kpi-label">Valor total vigentes</div>
+      <div class="kpi-foot">soma dos valores contratados</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-icon--amber">${ICONS.agenda}</div>
+      <div class="kpi-value">${a30d}</div>
+      <div class="kpi-label">Vencendo em 30 dias</div>
+      <div class="kpi-foot">requer atenção</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon kpi-icon--danger">${ICONS.close}</div>
+      <div class="kpi-value">${vencidos}</div>
+      <div class="kpi-label">Prazo vencido</div>
+      <div class="kpi-foot">ainda marcados como Vigente</div>
+    </div>
+  `;
 }
 
 function valorTotalContrato(contratoId) {
@@ -67,34 +125,37 @@ function renderTable() {
   const wrap = byId('contrato-table-container');
   const lista = filteredCache();
   if (!lista.length) {
-    wrap.innerHTML = renderEmptyState(activeFilter ? 'Nenhum contrato encontrado para este filtro.' : 'Nenhum contrato cadastrado.');
+    wrap.innerHTML = `<div style="padding:20px;">${renderEmptyState(activeFilter ? 'Nenhum contrato encontrado para este filtro.' : 'Nenhum contrato cadastrado.')}</div>`;
     return;
   }
-  wrap.innerHTML = `
-    <table class="data-table">
-      <thead><tr><th>Nº Contrato</th><th>Licitação</th><th>Órgão</th><th>Vigência</th><th>Situação</th><th>Valor Total</th><th></th></tr></thead>
-      <tbody>
-        ${lista.map((c) => {
-          const alert = c.situacao === 'Vigente' ? alertLevel(c.vigencia_fim) : null;
-          return `
-          <tr>
-            <td><strong>${escapeHtml(c.numero_contrato)}</strong></td>
-            <td>${escapeHtml(c.licitacao?.numero_pregao || '-')}</td>
-            <td>${escapeHtml(c.orgao?.nome || '-')}</td>
-            <td>${formatDate(c.vigencia_inicio)} – ${formatDate(c.vigencia_fim)}
-              ${alert ? `<br/>${badge(alert.level === 'vencido' ? 'Vencido' : `Vence em ${alert.days}d`, alert.level === 'vencido' ? 'danger' : 'warning')}` : ''}
-            </td>
-            <td>${badge(c.situacao, STATUS_COLOR[c.situacao] || 'muted')}</td>
-            <td>${formatCurrency(c.valor_contrato ?? valorTotalContrato(c.id))}</td>
-            <td class="row-actions">
-              <button class="icon-btn" data-action="contratos.editar" data-id="${c.id}" title="Editar">${ICONS.edit}</button>
-              ${isAdmin() ? `<button class="icon-btn" data-action="contratos.excluir" data-id="${c.id}" title="Excluir">${ICONS.trash}</button>` : ''}
-            </td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-  `;
+  wrap.innerHTML = lista.map((c) => {
+    const perc = vigenciaPerc(c.vigencia_inicio, c.vigencia_fim);
+    const fillClass = vigenciaFillClass(c.vigencia_fim, c.situacao);
+    const valor = c.valor_contrato ?? valorTotalContrato(c.id);
+    const licitRef = c.licitacao?.numero_pregao ? `· ${escapeHtml(c.licitacao.numero_pregao)}` : '';
+    return `
+      <div class="record">
+        <div class="record-main">
+          <div class="record-id">
+            <span class="num">${escapeHtml(c.numero_contrato)}</span>
+            ${badge(c.situacao, STATUS_COLOR[c.situacao] || 'muted')}
+          </div>
+          <p class="record-org">${escapeHtml(c.orgao?.nome || '—')} ${licitRef}</p>
+          <div class="vigencia">
+            <div class="vigencia-track"><div class="vigencia-fill ${fillClass}" style="width:${perc.toFixed(1)}%"></div></div>
+            <span class="vigencia-dates">${dtShort(c.vigencia_inicio)} → ${dtShort(c.vigencia_fim)}</span>
+          </div>
+        </div>
+        <div class="record-side">
+          <p class="record-value">${formatCurrency(valor)}</p>
+          <div class="record-actions">
+            <button class="icon-btn" data-action="contratos.editar" data-id="${c.id}" title="Editar">${ICONS.edit}</button>
+            ${isAdmin() ? `<button class="icon-btn" data-action="contratos.excluir" data-id="${c.id}" title="Excluir">${ICONS.trash}</button>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 async function abrirFormulario(contratoId) {

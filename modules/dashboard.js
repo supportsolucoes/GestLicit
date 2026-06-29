@@ -9,8 +9,8 @@ const STATUS_HEX = {
   'Declinou': '#94A3B8',
   'Desclassificado': '#DC2626',
   'Fracassado': '#DC2626',
-  'Revogado': '#D97706',
-  'Em disputa': '#2563EB',
+  'Revogado': '#B5790A',
+  'Em disputa': '#1E3A5F',
 };
 
 function fmtShort(val) {
@@ -189,7 +189,7 @@ export async function render(container) {
         ${faturasEmAberto.length ? `
           <div class="rel-prog-list">
             ${faturasEmAberto.map((f) => {
-              const barColor = f.perc >= 75 ? '#16A34A' : f.perc >= 40 ? '#2563EB' : '#D97706';
+              const barColor = f.perc >= 75 ? '#16A34A' : f.perc >= 40 ? '#1E3A5F' : '#B5790A';
               return `
                 <div class="rel-prog-row">
                   <div class="rel-prog-header">

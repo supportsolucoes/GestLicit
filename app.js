@@ -369,6 +369,10 @@ export async function initApp() {
   byId('btn-notifications').innerHTML = `${ICONS.bell}<span id="notif-dot" class="notif-dot hidden"></span>`;
   bindGlobalEvents();
 
+  window.addEventListener('scroll', () => {
+    document.querySelector('.topbar')?.classList.toggle('scrolled', window.scrollY > 2);
+  }, { passive: true });
+
   if (!isSupabaseConfigured()) {
     showLoginError('Configure as credenciais do Supabase em config.js para habilitar o login.');
     return;
