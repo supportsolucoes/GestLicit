@@ -338,16 +338,16 @@ begin
 
     execute format('drop policy if exists "%1$s_insert" on public.%1$I;', t);
     execute format('create policy "%1$s_insert" on public.%1$I for insert to authenticated
-                     with check (public.get_user_role() <> ''consulta'');', t);
+                     with check (public.get_user_role() in (''administrador'', ''usuario''));', t);
 
     execute format('drop policy if exists "%1$s_update" on public.%1$I;', t);
     execute format('create policy "%1$s_update" on public.%1$I for update to authenticated
-                     using (public.get_user_role() <> ''consulta'')
-                     with check (public.get_user_role() <> ''consulta'');', t);
+                     using (public.get_user_role() in (''administrador'', ''usuario''))
+                     with check (public.get_user_role() in (''administrador'', ''usuario''));', t);
 
     execute format('drop policy if exists "%1$s_delete" on public.%1$I;', t);
     execute format('create policy "%1$s_delete" on public.%1$I for delete to authenticated
-                     using (public.get_user_role() <> ''consulta'');', t);
+                     using (public.get_user_role() in (''administrador'', ''usuario''));', t);
   end loop;
 end;
 $$;
@@ -422,12 +422,12 @@ begin
 
     execute format('drop policy if exists "%1$s_insert" on public.%1$I;', t);
     execute format('create policy "%1$s_insert" on public.%1$I for insert to authenticated
-                     with check (public.get_user_role() <> ''consulta'');', t);
+                     with check (public.get_user_role() in (''administrador'', ''usuario''));', t);
 
     execute format('drop policy if exists "%1$s_update" on public.%1$I;', t);
     execute format('create policy "%1$s_update" on public.%1$I for update to authenticated
-                     using (public.get_user_role() <> ''consulta'')
-                     with check (public.get_user_role() <> ''consulta'');', t);
+                     using (public.get_user_role() in (''administrador'', ''usuario''))
+                     with check (public.get_user_role() in (''administrador'', ''usuario''));', t);
 
     execute format('drop policy if exists "%1$s_delete" on public.%1$I;', t);
     execute format('create policy "%1$s_delete" on public.%1$I for delete to authenticated
@@ -501,12 +501,12 @@ begin
 
     execute format('drop policy if exists "%1$s_insert" on public.%1$I;', t);
     execute format('create policy "%1$s_insert" on public.%1$I for insert to authenticated
-                     with check (public.get_user_role() <> ''consulta'');', t);
+                     with check (public.get_user_role() in (''administrador'', ''usuario''));', t);
 
     execute format('drop policy if exists "%1$s_update" on public.%1$I;', t);
     execute format('create policy "%1$s_update" on public.%1$I for update to authenticated
-                     using (public.get_user_role() <> ''consulta'')
-                     with check (public.get_user_role() <> ''consulta'');', t);
+                     using (public.get_user_role() in (''administrador'', ''usuario''))
+                     with check (public.get_user_role() in (''administrador'', ''usuario''));', t);
 
     execute format('drop policy if exists "%1$s_delete" on public.%1$I;', t);
     execute format('create policy "%1$s_delete" on public.%1$I for delete to authenticated
@@ -604,12 +604,12 @@ notify pgrst, 'reload schema';
 -- sistema), então demo_seed_log não muda.
 drop policy if exists "app_settings_upsert" on public.app_settings;
 create policy "app_settings_upsert" on public.app_settings for insert to authenticated
-  with check (public.get_user_role() <> 'consulta');
+  with check (public.get_user_role() in ('administrador', 'usuario'));
 
 drop policy if exists "app_settings_update" on public.app_settings;
 create policy "app_settings_update" on public.app_settings for update to authenticated
-  using (public.get_user_role() <> 'consulta')
-  with check (public.get_user_role() <> 'consulta');
+  using (public.get_user_role() in ('administrador', 'usuario'))
+  with check (public.get_user_role() in ('administrador', 'usuario'));
 
 create table if not exists public.empenho_entregas (
   id                  bigserial primary key,
@@ -628,11 +628,11 @@ create policy "empenho_entregas_select" on public.empenho_entregas for select to
 
 drop policy if exists "empenho_entregas_insert" on public.empenho_entregas;
 create policy "empenho_entregas_insert" on public.empenho_entregas for insert to authenticated
-  with check (public.get_user_role() <> 'consulta');
+  with check (public.get_user_role() in ('administrador', 'usuario'));
 
 drop policy if exists "empenho_entregas_delete" on public.empenho_entregas;
 create policy "empenho_entregas_delete" on public.empenho_entregas for delete to authenticated
-  using (public.get_user_role() <> 'consulta');
+  using (public.get_user_role() in ('administrador', 'usuario'));
 
 notify pgrst, 'reload schema';
 
@@ -773,7 +773,7 @@ create policy "profiles_delete" on public.app_profiles for delete to authenticat
 -- ============================================================
 -- MACRO de políticas para as tabelas operacionais:
 -- select: qualquer autenticado
--- insert/update: qualquer autenticado, exceto role 'consulta'
+-- insert/update: qualquer autenticado (administrador ou usuario)
 -- delete: apenas 'administrador'
 -- ============================================================
 do $$
@@ -789,12 +789,12 @@ begin
 
     execute format('drop policy if exists "%1$s_insert" on public.%1$I;', t);
     execute format('create policy "%1$s_insert" on public.%1$I for insert to authenticated
-                     with check (public.get_user_role() <> ''consulta'');', t);
+                     with check (public.get_user_role() in (''administrador'', ''usuario''));', t);
 
     execute format('drop policy if exists "%1$s_update" on public.%1$I;', t);
     execute format('create policy "%1$s_update" on public.%1$I for update to authenticated
-                     using (public.get_user_role() <> ''consulta'')
-                     with check (public.get_user_role() <> ''consulta'');', t);
+                     using (public.get_user_role() in (''administrador'', ''usuario''))
+                     with check (public.get_user_role() in (''administrador'', ''usuario''));', t);
 
     execute format('drop policy if exists "%1$s_delete" on public.%1$I;', t);
     execute format('create policy "%1$s_delete" on public.%1$I for delete to authenticated
@@ -818,7 +818,7 @@ create policy "documentos_storage_select" on storage.objects for select to authe
 
 drop policy if exists "documentos_storage_insert" on storage.objects;
 create policy "documentos_storage_insert" on storage.objects for insert to authenticated
-  with check (bucket_id = 'documentos' and public.get_user_role() <> 'consulta');
+  with check (bucket_id = 'documentos' and public.get_user_role() in ('administrador', 'usuario'));
 
 drop policy if exists "documentos_storage_delete" on storage.objects;
 create policy "documentos_storage_delete" on storage.objects for delete to authenticated
@@ -875,12 +875,12 @@ begin
 
     execute format('drop policy if exists "%1$s_insert" on public.%1$I;', t);
     execute format('create policy "%1$s_insert" on public.%1$I for insert to authenticated
-                     with check (public.get_user_role() <> ''consulta'');', t);
+                     with check (public.get_user_role() in (''administrador'', ''usuario''));', t);
 
     execute format('drop policy if exists "%1$s_update" on public.%1$I;', t);
     execute format('create policy "%1$s_update" on public.%1$I for update to authenticated
-                     using (public.get_user_role() <> ''consulta'')
-                     with check (public.get_user_role() <> ''consulta'');', t);
+                     using (public.get_user_role() in (''administrador'', ''usuario''))
+                     with check (public.get_user_role() in (''administrador'', ''usuario''));', t);
 
     execute format('drop policy if exists "%1$s_delete" on public.%1$I;', t);
     execute format('create policy "%1$s_delete" on public.%1$I for delete to authenticated

@@ -1,4 +1,4 @@
-import { byId } from './helpers.js';
+import { byId, escapeHtml } from './helpers.js';
 import { ICONS } from './constants.js';
 
 export function showToast(message, type = 'success') {
@@ -22,7 +22,7 @@ export function openModal(title, bodyHtml, { size = 'md', footerHtml = '' } = {}
     <div class="modal-overlay show" data-action="modal.backdrop">
       <div class="modal modal-${size}" data-modal-content>
         <div class="modal-header">
-          <h3>${title}</h3>
+          <h3>${escapeHtml(title)}</h3>
           <button type="button" class="icon-btn" data-action="modal.close">${ICONS.close}</button>
         </div>
         <div class="modal-body">${bodyHtml}</div>

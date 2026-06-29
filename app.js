@@ -4,7 +4,7 @@ import {
   setSession, setPage, toggleSidebar, refreshLookups,
   currentUser, currentRole, canAccessPage,
 } from './state.js';
-import { byId, qsa, formatDate } from './helpers.js';
+import { byId, qsa, formatDate, escapeHtml } from './helpers.js';
 import { ICONS, PAGE_META, ROLES } from './constants.js';
 import { showToast, setLoading, closeModal } from './ui.js';
 
@@ -177,19 +177,19 @@ async function refreshNotifications() {
     const items = [];
     atas.filter((a) => a.situacao === 'Vigente').forEach((a) => {
       const alert = alertLevel(a.vigencia_fim);
-      if (alert) items.push({ tipo: 'ata', registroId: a.id, dataRef: a.vigencia_fim, titulo: `Ata ${a.numero_ata}`, meta: `${a.orgao?.nome || 'Órgão não informado'} · vence em ${formatDate(a.vigencia_fim)}`, dias: alert.days, vencido: alert.level === 'vencido' });
+      if (alert) items.push({ tipo: 'ata', registroId: a.id, dataRef: a.vigencia_fim, titulo: `Ata ${escapeHtml(a.numero_ata)}`, meta: `${escapeHtml(a.orgao?.nome || 'Órgão não informado')} · vence em ${formatDate(a.vigencia_fim)}`, dias: alert.days, vencido: alert.level === 'vencido' });
     });
     contratos.filter((c) => c.situacao === 'Vigente').forEach((c) => {
       const alert = alertLevel(c.vigencia_fim);
-      if (alert) items.push({ tipo: 'contrato', registroId: c.id, dataRef: c.vigencia_fim, titulo: `Contrato ${c.numero_contrato}`, meta: `${c.orgao?.nome || 'Órgão não informado'} · vence em ${formatDate(c.vigencia_fim)}`, dias: alert.days, vencido: alert.level === 'vencido' });
+      if (alert) items.push({ tipo: 'contrato', registroId: c.id, dataRef: c.vigencia_fim, titulo: `Contrato ${escapeHtml(c.numero_contrato)}`, meta: `${escapeHtml(c.orgao?.nome || 'Órgão não informado')} · vence em ${formatDate(c.vigencia_fim)}`, dias: alert.days, vencido: alert.level === 'vencido' });
     });
     certidoes.forEach((c) => {
       const alert = alertLevel(c.data_validade);
-      if (alert) items.push({ tipo: 'certidao', registroId: c.id, dataRef: c.data_validade, titulo: `Certidão ${c.tipo}`, meta: `vence em ${formatDate(c.data_validade)}`, dias: alert.days, vencido: alert.level === 'vencido' });
+      if (alert) items.push({ tipo: 'certidao', registroId: c.id, dataRef: c.data_validade, titulo: `Certidão ${escapeHtml(c.tipo)}`, meta: `vence em ${formatDate(c.data_validade)}`, dias: alert.days, vencido: alert.level === 'vencido' });
     });
     eventos.filter((e) => e.lembrete).forEach((e) => {
       const alert = alertLevel(e.data);
-      if (alert) items.push({ tipo: 'agenda', registroId: e.id, dataRef: e.data, titulo: e.titulo, meta: `${e.tipo} · ${alert.level === 'vencido' ? 'já passou' : formatDate(e.data)}`, dias: alert.days, vencido: alert.level === 'vencido' });
+      if (alert) items.push({ tipo: 'agenda', registroId: e.id, dataRef: e.data, titulo: escapeHtml(e.titulo), meta: `${escapeHtml(e.tipo)} · ${alert.level === 'vencido' ? 'já passou' : formatDate(e.data)}`, dias: alert.days, vencido: alert.level === 'vencido' });
     });
 
     const visiveis = items.filter((i) => !lidasSet.has(notifKey(i.tipo, i.registroId, i.dataRef)));
