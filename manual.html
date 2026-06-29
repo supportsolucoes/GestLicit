@@ -110,6 +110,7 @@
     <a href="#licitacoes">Licitações</a>
     <a href="#licitacoes-habilitacao">↳ Habilitação</a>
     <a href="#licitacoes-monitoramento">↳ Monitoramento</a>
+    <a href="#licitacoes-filtros">↳ Chips e filtros</a>
     <a href="#contratos">Contratos</a>
     <a href="#atas">Atas</a>
     <a href="#empenhos">Empenhos</a>
@@ -236,7 +237,37 @@
 
       <div class="shot-wrap">
         <img class="shot" src="Imagens/manual/licitacoes_lista.png" alt="Listagem de Licitações em cartões, com tags, status e tarefas" />
-        <p class="shot-cap">Cada licitação é um cartão: tags, status, lembretes da Agenda e os botões Gerenciar / Resultado / Ver itens.</p>
+        <p class="shot-cap">Cada licitação é um cartão: tags, status, lembretes da Agenda e os botões Gerenciar / Resultado / Habilitação / Monitorar / Ver itens.</p>
+      </div>
+
+      <div class="card" id="licitacoes-filtros">
+        <h3>Chips de fase</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Acima dos filtros, há uma barra de chips coloridos que mostram a contagem de licitações por fase — derivada automaticamente dos itens cadastrados. Clique num chip para filtrar a lista; clique em <strong>Todas</strong> para voltar ao total.</p>
+        <dl class="fields">
+          <dt>Todas</dt><dd>Sem filtro de fase — mostra o total de licitações.</dd>
+          <dt>Em disputa <span style="color:#2563EB;">(azul)</span></dt><dd>Licitações com pelo menos um item ainda com status "Em disputa" — sessão ainda em andamento.</dd>
+          <dt>Ganhas <span style="color:#16A34A;">(verde)</span></dt><dd>Licitações com todos os itens decididos e pelo menos um com status "Ganhou".</dd>
+          <dt>Perdidas <span style="color:#DC2626;">(vermelho)</span></dt><dd>Licitações com todos os itens decididos e nenhum "Ganhou" (Declinou, Desclassificado, Fracassado ou Revogado).</dd>
+          <dt>Sem itens <span style="color:var(--gray-500);">(cinza)</span></dt><dd>Licitações cadastradas mas sem nenhum item de edital associado.</dd>
+        </dl>
+        <div class="tip"><strong>Combinação com filtros</strong>Os chips se acumulam com os filtros do painel abaixo. Exemplo: selecionar "Ganhas" + filtrar UF = SP mostra apenas licitações ganhas em São Paulo.</div>
+      </div>
+
+      <div class="card">
+        <h3>Filtros avançados</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Painel de filtros logo abaixo dos chips — todos se acumulam entre si e com o chip de fase ativo. O contador <em>"X de N licitações"</em> aparece sempre que algum filtro estiver ativo.</p>
+        <dl class="fields">
+          <dt>Buscar</dt><dd>Busca por texto em: número do pregão, número do processo, nome do órgão e objeto do edital.</dd>
+          <dt>UF</dt><dd>Seletor dinâmico — lista apenas os estados que aparecem em pelo menos uma licitação cadastrada.</dd>
+          <dt>Modalidade</dt><dd>Filtra por modalidade (Pregão Eletrônico, Dispensa etc.).</dd>
+          <dt>Órgão</dt><dd>Seletor dinâmico — lista apenas os órgãos com licitações cadastradas, em ordem alfabética.</dd>
+          <dt>Status do item</dt><dd>Mostra licitações que tenham pelo menos um item com o status escolhido (ex.: "Ganhou").</dd>
+          <dt>Tag</dt><dd>Mostra licitações que tenham a tag escolhida atribuída.</dd>
+          <dt>Abertura de / até</dt><dd>Filtra pelo campo <em>Data de abertura</em> da licitação (ou <em>Data da sessão</em> quando a abertura estiver vazia).</dd>
+          <dt>Habilitação</dt><dd>Filtra pelo status de habilitação registrado no painel <a href="#licitacoes-habilitacao">Habilitação</a>.</dd>
+          <dt>Monitoramento</dt><dd>Filtra pelo status geral registrado no painel <a href="#licitacoes-monitoramento">Monitoramento</a>.</dd>
+          <dt>Limpar</dt><dd>Reseta todos os filtros e o chip de fase de uma vez.</dd>
+        </dl>
       </div>
 
       <div class="card">
