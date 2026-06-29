@@ -735,6 +735,23 @@ table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .lic-card-footer { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--gray-100); }
 .lic-card-itens { overflow-x: auto; }
 
+/* Chips de fase (Licitações) */
+.fase-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.fase-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 14px; border-radius: 999px; border: 1.5px solid transparent;
+  font-size: 13px; font-weight: 600; cursor: pointer; line-height: 1;
+  transition: filter .12s, transform .1s;
+}
+.fase-chip:hover { filter: brightness(.93); transform: translateY(-1px); }
+.fase-chip:active { transform: translateY(0); }
+.fase-chip-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; background: rgba(0,0,0,.10);
+}
+.fase-chip--active .fase-chip-count { background: rgba(255,255,255,.22); }
+
 @media (max-width: 640px) {
   .lic-card-facts { flex-wrap: wrap; }
   .lic-card-facts > div { flex: 1 1 45%; border-right: none; padding: 4px 0; }

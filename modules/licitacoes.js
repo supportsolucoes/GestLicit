@@ -15,11 +15,46 @@ let originalItemIds = new Set();
 let editingLicitacaoId = null;
 let resultadoItems = [];
 let atestadoSumByProduto = new Map();
+let _faseAtiva = '';
 let _habId = null;
 let _habDocs = [];
 let _monId = null;
 let _monTarefas = [];
 let _monHistorico = [];
+
+function getFaseLicitacao(licitacaoId) {
+  const itens = itemsByLicitacao.get(licitacaoId) || [];
+  if (!itens.length) return 'sem-itens';
+  if (itens.some((i) => i.status === 'Em disputa')) return 'em-disputa';
+  if (itens.some((i) => i.status === 'Ganhou')) return 'ganhou';
+  return 'perdida';
+}
+
+function renderChips() {
+  const el = byId('lic-fase-chips');
+  if (!el) return;
+  const counts = { 'em-disputa': 0, ganhou: 0, perdida: 0, 'sem-itens': 0 };
+  cache.forEach((l) => counts[getFaseLicitacao(l.id)]++);
+
+  const defs = [
+    { fase: '',           label: 'Todas',      count: cache.length,          cor: 'var(--gray-700)', bg: 'var(--gray-100)' },
+    { fase: 'em-disputa', label: 'Em disputa', count: counts['em-disputa'],  cor: '#2563EB',         bg: '#EFF6FF' },
+    { fase: 'ganhou',     label: 'Ganhas',     count: counts.ganhou,         cor: '#16A34A',         bg: '#ECFDF5' },
+    { fase: 'perdida',    label: 'Perdidas',   count: counts.perdida,        cor: '#DC2626',         bg: '#FEF2F2' },
+    { fase: 'sem-itens',  label: 'Sem itens',  count: counts['sem-itens'],   cor: 'var(--gray-500)', bg: 'var(--gray-100)' },
+  ];
+
+  el.innerHTML = defs.map((d) => {
+    const ativo = _faseAtiva === d.fase;
+    const style = ativo
+      ? `background:${d.cor}; color:#fff; border-color:${d.cor};`
+      : `color:${d.cor}; border-color:${d.cor}55; background:${d.bg};`;
+    return `<button class="fase-chip${ativo ? ' fase-chip--active' : ''}" style="${style}"
+      data-action="licitacoes.setFase" data-fase="${d.fase}">
+      ${d.label}<span class="fase-chip-count">${d.count}</span>
+    </button>`;
+  }).join('');
+}
 
 export async function render(container) {
   container.innerHTML = `
@@ -30,6 +65,8 @@ export async function render(container) {
       </div>
       ${canWrite() ? `<button class="btn btn-primary" data-action="licitacoes.novo">${ICONS.plus}Nova Licitação</button>` : ''}
     </div>
+
+    <div id="lic-fase-chips" class="fase-chips"></div>
 
     <div class="card no-sticky" style="margin-bottom:16px;">
       <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
@@ -144,6 +181,7 @@ async function reload() {
   for (const arr of agendaByLicitacao.values()) arr.sort((a, b) => (a.data > b.data ? 1 : -1));
 
   populateFilterSelects();
+  renderChips();
   renderCards();
 }
 
@@ -215,12 +253,13 @@ function renderCards() {
     }
     if (habFiltro && (l.habilitacao_status || 'Aguardando') !== habFiltro) return false;
     if (monFiltro && (l.monitoramento_status || 'Em andamento') !== monFiltro) return false;
+    if (_faseAtiva && getFaseLicitacao(l.id) !== _faseAtiva) return false;
     return true;
   });
 
   const resumo = byId('lic-filtro-resumo');
   if (resumo) {
-    const temFiltro = busca || statusFiltro || tagFiltro || ufFiltro || modFiltro || orgFiltro || dataIni || dataFim || habFiltro || monFiltro;
+    const temFiltro = busca || statusFiltro || tagFiltro || ufFiltro || modFiltro || orgFiltro || dataIni || dataFim || habFiltro || monFiltro || _faseAtiva;
     resumo.textContent = temFiltro ? `${filtradas.length} de ${cache.length} licitações` : '';
   }
 
@@ -1298,13 +1337,20 @@ export const actions = {
   'licitacoes.salvarLembrete': (target) => salvarLembrete(target),
   'licitacoes.resultado': (target) => abrirResultado(target),
   'licitacoes.salvarResultado': () => salvarResultado(),
+  'licitacoes.setFase': (target) => {
+    _faseAtiva = target.dataset.fase;
+    renderChips();
+    renderCards();
+  },
   'licitacoes.limparFiltros': () => {
+    _faseAtiva = '';
     ['lic-filtro-busca','lic-filtro-uf','lic-filtro-modalidade','lic-filtro-orgao',
       'lic-filtro-status','lic-filtro-tag','lic-filtro-data-ini','lic-filtro-data-fim',
       'lic-filtro-hab','lic-filtro-mon'].forEach((id) => {
       const el = byId(id);
       if (el) el.tagName === 'INPUT' ? (el.value = '') : (el.selectedIndex = 0);
     });
+    renderChips();
     renderCards();
   },
   'licitacoes.habilitacao': (target) => abrirHabilitacao(target),
