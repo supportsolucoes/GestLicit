@@ -104,9 +104,12 @@
     <div class="toc-group-label">Visão geral</div>
     <a href="#intro">Como o sistema funciona</a>
     <a href="#dashboard">Dashboard</a>
+    <a href="#participacoes">Minhas Participações</a>
 
     <div class="toc-group-label">Ciclo licitatório</div>
     <a href="#licitacoes">Licitações</a>
+    <a href="#licitacoes-habilitacao">↳ Habilitação</a>
+    <a href="#licitacoes-monitoramento">↳ Monitoramento</a>
     <a href="#contratos">Contratos</a>
     <a href="#atas">Atas</a>
     <a href="#empenhos">Empenhos</a>
@@ -194,6 +197,38 @@
       </div>
     </section>
 
+    <section class="modulo" id="participacoes">
+      <div class="modulo-eyebrow">Visão geral</div>
+      <h2>Minhas Participações</h2>
+      <p class="dek">Painel analítico de desempenho nos pregões. Mostra, de forma consolidada, o que foi disputado e como foi o resultado — por período, UF e modalidade.</p>
+
+      <div class="card">
+        <h3>Filtros disponíveis</h3>
+        <dl class="fields">
+          <dt>Data início / fim</dt><dd>Filtra pelos itens cuja licitação tem data de abertura (ou sessão) dentro do período. Padrão: 1º de janeiro do ano corrente até hoje.</dd>
+          <dt>UF</dt><dd>Filtra por estado da licitação.</dd>
+          <dt>Modalidade</dt><dd>Filtra por modalidade (Pregão Eletrônico, Dispensa etc.).</dd>
+        </dl>
+        <div class="tip"><strong>Dica</strong>Clique "Filtrar" após alterar os campos — o painel recalcula tudo na hora, sem recarregar a página.</div>
+      </div>
+
+      <div class="card">
+        <h3>O que cada indicador significa</h3>
+        <dl class="fields">
+          <dt>Taxa de êxito (gauge)</dt><dd>% de licitações vencidas sobre o total de licitações já decididas (ignora as que ainda estão "Em disputa"). Fica verde ≥50 %, amarelo ≥25 %, vermelho &lt;25 %.</dd>
+          <dt>Licitações disputadas</dt><dd>Quantidade de editais únicos no período — e quantos deles tiveram pelo menos um item ganho.</dd>
+          <dt>Itens ganhos</dt><dd>Itens com status "Ganhou" sobre o total de itens com resultado definido. O percentual ao lado é o aproveitamento de itens.</dd>
+          <dt>Valor arrematado</dt><dd>Soma do valor final × quantidade de todos os itens ganhos no período. A linha inferior mostra o total participado (itens com qualquer status, inclusive "Em disputa").</dd>
+          <dt>Arrematações por período</dt><dd>Gráfico de barras com o valor arrematado por mês (data de abertura da licitação).</dd>
+          <dt>Principais modalidades</dt><dd>Ranking das modalidades com mais licitações disputadas no período.</dd>
+          <dt>Participação por estado</dt><dd>Tabela com total de licitações e vitórias por UF, e o % de êxito de cada estado.</dd>
+          <dt>Desclassificações</dt><dd>Lista de itens com resultado "Desclassificado" no período, com o motivo registrado.</dd>
+        </dl>
+      </div>
+
+      <div class="tip"><strong>Dados de origem</strong>Todos os números vêm dos itens de licitação (<a href="#licitacoes">Licitações → itens</a>) com status já preenchido. Se um item ainda está "Em disputa", ele entra na contagem de valor participado mas não na taxa de êxito.</div>
+    </section>
+
     <section class="modulo" id="licitacoes">
       <div class="modulo-eyebrow">Ciclo licitatório · Passo 1</div>
       <h2>Licitações</h2>
@@ -254,6 +289,8 @@
           <dt>+ Criar lembrete</dt><dd>Cria um compromisso na Agenda vinculado a esta licitação (ex.: data de impugnação, data de recurso).</dd>
           <dt>Ver itens do edital</dt><dd>Expande o cartão e mostra os itens cadastrados, só para consulta.</dd>
           <dt>Resultado</dt><dd>Abre um modal separado da precificação. Para cada item, preencha o <strong>Lance Final</strong> e o <strong>Valor Arrematado</strong> (o que realmente fechou, seu ou do concorrente) e marque o <strong>Resultado</strong> (Ganhou, Declinou, Desclassificado, Fracassado, Revogado). Se foi uma perda, aparecem campos extras para apontar o <strong>Concorrente Vencedor</strong> e o <strong>Motivo da perda</strong>.</dd>
+          <dt>Habilitação</dt><dd>Abre o painel de habilitação desta licitação — veja detalhes no bloco <a href="#licitacoes-habilitacao">Habilitação</a> abaixo. O botão exibe um badge verde "Habilitado" ou vermelho "Inabilitado" quando o status já foi definido.</dd>
+          <dt>Monitorar</dt><dd>Abre o painel de monitoramento desta licitação — veja detalhes no bloco <a href="#licitacoes-monitoramento">Monitoramento</a> abaixo. O botão exibe um badge quando o status é "Encerrado" ou "Suspenso".</dd>
         </dl>
         <div class="shot-wrap">
           <img class="shot" src="Imagens/manual/licitacoes_resultado.png" alt="Modal de Resultado da disputa, separado da precificação" />
@@ -261,6 +298,32 @@
       </div>
 
       <div class="tip"><strong>Quando usar a Análise de Concorrente</strong>Antes de registrar uma perda, vale checar o CNPJ do concorrente vencedor em <a href="#concorrentes">Concorrentes → Analisar</a> para entender contra quem se está disputando.</div>
+
+      <div class="card" id="licitacoes-habilitacao">
+        <h3>Habilitação</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Registra a etapa de habilitação: se a empresa foi aprovada para participar da disputa e o que ocorreu durante o processo documental.</p>
+        <dl class="fields">
+          <dt>Status da habilitação</dt><dd><strong>Aguardando</strong> (padrão) — ainda não há definição; <strong>Habilitado</strong> — empresa aprovada para participar; <strong>Inabilitado</strong> — empresa não aprovada. O status aparece como badge no cartão da listagem.</dd>
+          <dt>Data da habilitação</dt><dd>Quando a decisão de habilitação/inabilitação foi publicada ou comunicada.</dd>
+          <dt>Impugnação</dt><dd>Marque se houve impugnação ao edital. Um campo de observações se expande para registrar o motivo ou o resultado.</dd>
+          <dt>Recurso</dt><dd>Marque se a empresa (ou concorrente) interpôs recurso. Também expande um campo de observações.</dd>
+          <dt>Observações gerais</dt><dd>Campo livre para qualquer anotação sobre a fase de habilitação.</dd>
+          <dt>Documentos exigidos</dt><dd>Checklist dos documentos pedidos no edital. Adicione um a um; clique no checkbox para marcar como "Entregue" (riscado). Status possíveis: Pendente / Entregue / Dispensado (qualquer usuário pode marcar como Entregue; excluir exige permissão de escrita).</dd>
+        </dl>
+        <div class="tip"><strong>Salvar</strong>O botão "Salvar" no rodapé do modal grava o status, datas e observações. Os documentos do checklist são salvos individualmente a cada ação (adicionar, marcar, remover) — não precisam de "Salvar" extra.</div>
+      </div>
+
+      <div class="card" id="licitacoes-monitoramento">
+        <h3>Monitoramento</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Acompanha o andamento da licitação depois da sessão pública: status geral, tarefas pendentes e histórico de atualizações.</p>
+        <dl class="fields">
+          <dt>Status geral</dt><dd><strong>Em andamento</strong> (padrão) — processo ainda em curso; <strong>Encerrado</strong> — processo finalizado; <strong>Suspenso</strong> — processo interrompido temporariamente. Encerrado e Suspenso aparecem como badge no cartão da listagem.</dd>
+          <dt>Checklist de tarefas</dt><dd>Lista de tarefas pendentes para esta licitação (ex.: "Enviar recurso", "Aguardar homologação"). Adicione uma descrição e clique "+ Adicionar". Marque o checkbox para concluir (texto riscado) ou desmarque para reabrir. A barra de progresso mostra o % concluído. Excluir uma tarefa é irreversível.</dd>
+          <dt>Histórico de atualizações</dt><dd>Registro cronológico de acontecimentos. Informe a data e uma descrição e clique "+ Registrar". Entradas mais recentes aparecem no topo. Ideal para anotar: "Sessão suspensa", "Impugnação acatada", "Homologado em X data" etc.</dd>
+          <dt>Criar lembrete na Agenda</dt><dd>Atalho para criar um compromisso na <a href="#agenda">Agenda</a> vinculado a esta licitação — útil para marcar prazo de recurso, data de homologação prevista etc. Abre o formulário de lembrete usual sem fechar o painel de Monitoramento.</dd>
+        </dl>
+        <div class="tip"><strong>Salvar status</strong>O botão "Salvar status" no rodapé grava apenas o campo Status geral. Tarefas e histórico são salvos individualmente a cada ação — não dependem desse botão.</div>
+      </div>
     </section>
 
     <section class="modulo" id="contratos">
