@@ -138,6 +138,12 @@ export async function listAllLicitacaoItens() {
   return handle(sb().from('licitacao_itens').select('*, licitacao:licitacoes(id,numero_pregao,numero_processo,data_sessao,orgao_id)'));
 }
 
+export async function listParticipacoes() {
+  return handle(sb().from('licitacao_itens').select(
+    'id, item_numero, produto_descricao, quantidade, valor_final, valor_arrematado, status, motivo_perda, produto:produtos(id,nome), licitacao:licitacoes(id,numero_pregao,objeto,modalidade,uf,data_abertura,data_sessao,orgao:orgaos(id,nome,uf))',
+  ).order('licitacao_id'));
+}
+
 export async function createLicitacaoItem(payload) {
   return handle(sb().from('licitacao_itens').insert(payload).select(LICITACAO_ITEM_SELECT).single());
 }

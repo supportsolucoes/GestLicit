@@ -15,6 +15,7 @@ export const ICONS = {
   documentos: `${ICELL}<path d="M3 7a1.5 1.5 0 0 1 1.5-1.5h4l1.5 2H19A1.5 1.5 0 0 1 20.5 9v9A1.5 1.5 0 0 1 19 19.5H4.5A1.5 1.5 0 0 1 3 18z"/></svg>`,
   agenda: `${ICELL}<rect x="3.5" y="5" width="17" height="16" rx="1.8"/><line x1="3.5" y1="9.5" x2="20.5" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/></svg>`,
   relatorios: `${ICELL}<line x1="5" y1="21" x2="19" y2="21"/><rect x="6" y="13" width="3.2" height="8"/><rect x="10.4" y="9" width="3.2" height="12"/><rect x="14.8" y="5" width="3.2" height="16"/></svg>`,
+  participacoes: `${ICELL}<path d="M7 4H4v5c0 2.8 1.8 5 4 6.2"/><path d="M17 4h3v5c0 2.8-1.8 5-4 6.2"/><path d="M7 4h10v6a5 5 0 0 1-10 0V4z"/><path d="M12 16v5"/><path d="M9 21h6"/></svg>`,
   configuracoes: `${ICELL}<circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.7-1.3-1.7-2.9-2 .6a7.4 7.4 0 0 0-2.6-1.5L14.4 3h-4.8l-.4 2.4a7.4 7.4 0 0 0-2.6 1.5l-2-.6L2.9 9.2l1.7 1.3a7.6 7.6 0 0 0 0 3L2.9 14.8l1.7 2.9 2-.6a7.4 7.4 0 0 0 2.6 1.5l.4 2.4h4.8l.4-2.4a7.4 7.4 0 0 0 2.6-1.5l2 .6 1.7-2.9z"/></svg>`,
   bell: `${ICELL}<path d="M18 9a6 6 0 0 0-12 0c0 4-1.5 5.5-1.5 5.5h15S18 13 18 9z"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>`,
   search: `${ICELL}<circle cx="11" cy="11" r="6.5"/><line x1="20" y1="20" x2="15.8" y2="15.8"/></svg>`,
@@ -32,7 +33,8 @@ export const ICONS = {
 };
 
 export const PAGE_META = [
-  { id: 'dashboard',     label: 'Dashboard',     icon: 'dashboard',     group: 'VISÃO GERAL' },
+  { id: 'dashboard',       label: 'Dashboard',          icon: 'dashboard',       group: 'VISÃO GERAL' },
+  { id: 'participacoes',   label: 'Minhas Participações', icon: 'participacoes',   group: 'VISÃO GERAL' },
   { id: 'licitacoes',    label: 'Licitações',    icon: 'licitacoes',    group: 'CICLO LICITATÓRIO' },
   { id: 'contratos',     label: 'Contratos',     icon: 'contratos',     group: 'CICLO LICITATÓRIO' },
   { id: 'atas',          label: 'Atas',          icon: 'atas',          group: 'CICLO LICITATÓRIO' },

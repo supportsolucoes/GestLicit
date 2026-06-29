@@ -9,6 +9,7 @@ import { ICONS, PAGE_META, ROLES } from './constants.js';
 import { showToast, setLoading, closeModal } from './ui.js';
 
 import * as Dashboard from './modules/dashboard.js';
+import * as Participacoes from './modules/participacoes.js';
 import * as Licitacoes from './modules/licitacoes.js';
 import * as Contratos from './modules/contratos.js';
 import * as Atas from './modules/atas.js';
@@ -28,6 +29,7 @@ import { alertLevel } from './helpers.js';
 
 const MODULES = {
   dashboard: Dashboard,
+  participacoes: Participacoes,
   licitacoes: Licitacoes,
   contratos: Contratos,
   atas: Atas,
