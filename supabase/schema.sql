@@ -967,3 +967,32 @@ alter table public.produtos
   add column if not exists fator_caixa    numeric(14,4);
 
 notify pgrst, 'reload schema';
+
+-- ============================================================
+-- ALTERAÇÕES v1.16 — Segurança: impedir escalada de privilégio via self-update
+-- Qualquer usuário autenticado podia alterar sua própria coluna `role` em
+-- app_profiles via PATCH direto na API REST, passando pela RLS (que só verifica
+-- id = auth.uid(), sem restringir colunas). O trigger abaixo bloqueia no banco.
+-- Aditivo e idempotente: seguro rodar de novo sobre o banco já em produção.
+-- ============================================================
+
+create or replace function public.protect_profile_role()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.role is distinct from old.role then
+    if (select role from public.app_profiles where id = auth.uid()) <> 'administrador' then
+      raise exception 'Somente administradores podem alterar o campo role.';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists protect_role_before_update on public.app_profiles;
+create trigger protect_role_before_update
+  before update on public.app_profiles
+  for each row execute function public.protect_profile_role();
