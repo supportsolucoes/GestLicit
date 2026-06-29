@@ -184,16 +184,52 @@
     <section class="modulo" id="dashboard">
       <div class="modulo-eyebrow">Visão geral</div>
       <h2>Dashboard</h2>
-      <p class="dek">Primeira tela ao entrar. Não tem nada para preencher — é um resumo automático do que já foi cadastrado.</p>
+      <p class="dek">Primeira tela ao entrar. Não tem nada para preencher — é um resumo automático do que já foi cadastrado nos demais módulos.</p>
       <div class="shot-wrap">
         <img class="shot" src="Imagens/manual/dashboard.png" alt="Tela do Dashboard, com indicadores, gráficos e alertas de vencimento" />
       </div>
+
       <div class="card">
+        <h3>Seletor de período</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">No canto superior direito do cabeçalho há três abas que controlam a janela de tempo dos KPIs principais. Trocar o período <strong>não faz nova consulta ao banco</strong> — os dados já estão carregados e são filtrados em memória.</p>
         <dl class="fields">
-          <dt>Taxa de êxito</dt><dd>% de itens de licitação com resultado "Ganhou" sobre o total de itens já decididos (ignora os que ainda estão "Em disputa").</dd>
-          <dt>Valor ganho</dt><dd>Soma do valor final × quantidade de todos os itens com status "Ganhou".</dd>
+          <dt>Este mês</dt><dd>Padrão ao abrir o dashboard. Mostra apenas dados cujas datas de referência estejam no mês e ano correntes.</dd>
+          <dt>Este ano</dt><dd>Acumula todos os dados do ano calendário corrente.</dd>
+          <dt>Total</dt><dd>Sem filtro de data — agrega tudo que existe no sistema.</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3>KPIs do período</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Bloco com borda azul à esquerda, logo abaixo do cabeçalho. Os cinco cartões respondem ao período selecionado.</p>
+        <dl class="fields">
+          <dt>Pregões disputados</dt><dd>Licitações únicas (por ID) em que participamos com pelo menos um item, filtrando pela data da sessão pública.</dd>
+          <dt>Pregões ganhos</dt><dd>Licitações únicas em que pelo menos um item saiu com status "Ganhou" no período. O rodapé mostra a taxa de êxito do período.</dd>
+          <dt>Valor arrematado</dt><dd>Soma do valor final × quantidade de todos os itens "Ganhou" com sessão no período.</dd>
+          <dt>Faturado</dt><dd>Soma do valor de faturas <em>não canceladas</em> cuja data de emissão cai no período.</dd>
+          <dt>Recebido</dt><dd>Soma dos recebimentos (parcelas pagas) cuja data de recebimento cai no período.</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3>Visão geral · acumulado</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Seção abaixo dos gráficos. Estes cinco KPIs são sempre totais históricos, independentemente do período selecionado.</p>
+        <dl class="fields">
+          <dt>Em disputa</dt><dd>Itens de licitação com status "Em disputa" agora — aguardando resultado.</dd>
+          <dt>Taxa de êxito</dt><dd>% de itens com resultado "Ganhou" sobre o total de itens decididos (todo o histórico).</dd>
           <dt>Atas vigentes</dt><dd>Quantas Atas estão com situação "Vigente" hoje, e o valor total delas.</dd>
-          <dt>Alertas</dt><dd>Lista de Atas e Certidões perto do vencimento — mesma lógica do sininho de notificações (90/60/30/15/7 dias).</dd>
+          <dt>Valor ganho</dt><dd>Soma acumulada de todos os itens ganhos desde sempre.</dd>
+          <dt>Em aberto</dt><dd>Total de faturas não canceladas menos o que já foi recebido — o que ainda está a receber.</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3>Gráficos e listas</h3>
+        <dl class="fields">
+          <dt>Evolução mensal</dt><dd>Gráfico de barras com o valor ganho por mês nos últimos 6 meses (acumulado total, não filtrado pelo período selecionado).</dd>
+          <dt>Resultado dos itens</dt><dd>Rosca com a distribuição de status de todos os itens cadastrados.</dd>
+          <dt>Alertas de vencimento</dt><dd>Atas, Contratos e Certidões perto do vencimento — mesma lógica do sininho de notificações (90/60/30/15/7 dias).</dd>
+          <dt>Faturas pendentes</dt><dd>Faturas com saldo em aberto, ordenadas do maior para o menor, com barra de progresso do recebimento.</dd>
         </dl>
       </div>
     </section>
