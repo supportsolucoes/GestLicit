@@ -15,6 +15,11 @@ let originalItemIds = new Set();
 let editingLicitacaoId = null;
 let resultadoItems = [];
 let atestadoSumByProduto = new Map();
+let _habId = null;
+let _habDocs = [];
+let _monId = null;
+let _monTarefas = [];
+let _monHistorico = [];
 
 export async function render(container) {
   container.innerHTML = `
@@ -198,6 +203,8 @@ function cardHtml(l) {
       <div class="lic-card-footer">
         <button class="btn btn-primary btn-sm" data-action="licitacoes.editar" data-id="${l.id}">Gerenciar</button>
         <button class="btn btn-ghost btn-sm" data-action="licitacoes.resultado" data-id="${l.id}">Resultado</button>
+        <button class="btn btn-ghost btn-sm" data-action="licitacoes.habilitacao" data-id="${l.id}">Habilitação${l.habilitacao_status && l.habilitacao_status !== 'Aguardando' ? ` ${badge(l.habilitacao_status, l.habilitacao_status === 'Habilitado' ? 'success' : 'danger')}` : ''}</button>
+        <button class="btn btn-ghost btn-sm" data-action="licitacoes.monitoramento" data-id="${l.id}">Monitorar${l.monitoramento_status === 'Encerrado' ? ` ${badge('Encerrado', 'muted')}` : l.monitoramento_status === 'Suspenso' ? ` ${badge('Suspenso', 'warning')}` : ''}</button>
         <button type="button" class="link-btn" id="toggle-btn-${l.id}" data-action="licitacoes.toggleItens" data-id="${l.id}">↓ Ver itens</button>
       </div>
 
@@ -832,6 +839,338 @@ async function salvarResultado() {
   }
 }
 
+// ─── Habilitação ─────────────────────────────────────────────────────────────
+
+function renderHabDocsSection() {
+  const el = document.getElementById('hab-docs-section');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="form-section-title" style="margin-top:16px;">Documentos exigidos</div>
+    ${_habDocs.length ? `
+      <div class="check-list">
+        ${_habDocs.map((d) => `
+          <div class="check-list-item">
+            <input type="checkbox" ${d.status !== 'Pendente' ? 'checked' : ''}
+              data-action="licitacoes.toggleHabDoc" data-id="${d.id}"
+              ${!canWrite() ? 'disabled' : ''}>
+            <span style="${d.status !== 'Pendente' ? 'text-decoration:line-through; color:var(--gray-400);' : ''}">${escapeHtml(d.nome)}</span>
+            ${badge(d.status, d.status === 'Entregue' ? 'success' : d.status === 'Dispensado' ? 'muted' : 'warning')}
+            ${canWrite() ? `<button type="button" class="icon-btn" data-action="licitacoes.removerHabDoc" data-id="${d.id}">${ICONS.trash}</button>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    ` : '<p style="font-size:13px; color:var(--gray-400); margin:8px 0;">Nenhum documento cadastrado.</p>'}
+    ${canWrite() ? `
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="hab-novo-doc" class="form-input" placeholder="Nome do documento exigido..." style="flex:1;">
+        <button class="btn btn-ghost btn-sm" data-action="licitacoes.addHabDoc">+ Adicionar</button>
+      </div>
+    ` : ''}
+  `;
+}
+
+async function abrirHabilitacao(target) {
+  const licitacaoId = Number(target.dataset.id);
+  const licitacao = cache.find((l) => l.id === licitacaoId);
+  _habId = licitacaoId;
+  _habDocs = await Service.Habilitacao.listDocs(licitacaoId);
+
+  const bodyHtml = `
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Status da habilitação</label>
+        <select id="hab-status" class="form-input" ${canWrite() ? '' : 'disabled'}>
+          <option value="Aguardando" ${(licitacao?.habilitacao_status ?? 'Aguardando') === 'Aguardando' ? 'selected' : ''}>Aguardando</option>
+          <option value="Habilitado" ${licitacao?.habilitacao_status === 'Habilitado' ? 'selected' : ''}>Habilitado</option>
+          <option value="Inabilitado" ${licitacao?.habilitacao_status === 'Inabilitado' ? 'selected' : ''}>Inabilitado</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Data da habilitação</label>
+        <input type="date" id="hab-data" class="form-input" value="${licitacao?.habilitacao_data || ''}" ${canWrite() ? '' : 'disabled'}>
+      </div>
+      <div class="form-field">
+        <label>Impugnação</label>
+        <div class="checkbox-field" style="height:38px;">
+          <input type="checkbox" id="hab-impugnacao" ${licitacao?.habilitacao_impugnacao ? 'checked' : ''} ${canWrite() ? '' : 'disabled'} data-action="licitacoes.toggleHabImpugnacao"> Houve impugnação
+        </div>
+      </div>
+      <div class="form-field" id="hab-impugnacao-obs-field" ${licitacao?.habilitacao_impugnacao ? '' : 'hidden'}>
+        <label>Obs. impugnação</label>
+        <textarea id="hab-impugnacao-obs" class="form-input" rows="2" ${canWrite() ? '' : 'disabled'}>${escapeHtml(licitacao?.habilitacao_impugnacao_obs || '')}</textarea>
+      </div>
+      <div class="form-field">
+        <label>Recurso</label>
+        <div class="checkbox-field" style="height:38px;">
+          <input type="checkbox" id="hab-recurso" ${licitacao?.habilitacao_recurso ? 'checked' : ''} ${canWrite() ? '' : 'disabled'} data-action="licitacoes.toggleHabRecurso"> Houve recurso
+        </div>
+      </div>
+      <div class="form-field" id="hab-recurso-obs-field" ${licitacao?.habilitacao_recurso ? '' : 'hidden'}>
+        <label>Obs. recurso</label>
+        <textarea id="hab-recurso-obs" class="form-input" rows="2" ${canWrite() ? '' : 'disabled'}>${escapeHtml(licitacao?.habilitacao_recurso_obs || '')}</textarea>
+      </div>
+      <div class="form-field span-2">
+        <label>Observações gerais</label>
+        <textarea id="hab-observacoes" class="form-input" rows="3" ${canWrite() ? '' : 'disabled'}>${escapeHtml(licitacao?.habilitacao_observacoes || '')}</textarea>
+      </div>
+    </div>
+    <div id="hab-docs-section"></div>
+  `;
+
+  openModal(`Habilitação — ${escapeHtml(licitacao?.numero_pregao || 'Licitação')}`, bodyHtml, {
+    size: 'md',
+    footerHtml: canWrite()
+      ? `<button type="button" class="btn btn-ghost" data-action="modal.close">Cancelar</button>
+         <button type="button" class="btn btn-primary" data-action="licitacoes.salvarHabilitacao" data-id="${licitacaoId}">Salvar</button>`
+      : `<button type="button" class="btn btn-ghost" data-action="modal.close">Fechar</button>`,
+  });
+  renderHabDocsSection();
+}
+
+async function salvarHabilitacao(target) {
+  const licitacaoId = Number(target.dataset.id);
+  try {
+    await Service.updateLicitacao(licitacaoId, {
+      habilitacao_status: byId('hab-status').value,
+      habilitacao_data: byId('hab-data').value || null,
+      habilitacao_impugnacao: byId('hab-impugnacao').checked,
+      habilitacao_impugnacao_obs: byId('hab-impugnacao-obs')?.value.trim() || null,
+      habilitacao_recurso: byId('hab-recurso').checked,
+      habilitacao_recurso_obs: byId('hab-recurso-obs')?.value.trim() || null,
+      habilitacao_observacoes: byId('hab-observacoes').value.trim() || null,
+    });
+    showToast('Habilitação salva.', 'success');
+    closeModal();
+    await reload();
+  } catch (err) {
+    showToast(err.message || 'Erro ao salvar habilitação.', 'error');
+  }
+}
+
+async function addHabDoc() {
+  const nome = byId('hab-novo-doc')?.value.trim();
+  if (!nome) return showToast('Informe o nome do documento.', 'error');
+  try {
+    const doc = await Service.Habilitacao.addDoc({ licitacao_id: _habId, nome, status: 'Pendente' });
+    _habDocs.push(doc);
+    byId('hab-novo-doc').value = '';
+    renderHabDocsSection();
+  } catch (err) {
+    showToast(err.message || 'Erro ao adicionar documento.', 'error');
+  }
+}
+
+async function toggleHabDoc(target) {
+  const id = Number(target.dataset.id);
+  const doc = _habDocs.find((d) => d.id === id);
+  if (!doc) return;
+  const novoStatus = doc.status === 'Entregue' ? 'Pendente' : 'Entregue';
+  try {
+    await Service.Habilitacao.updateDoc(id, { status: novoStatus });
+    doc.status = novoStatus;
+    renderHabDocsSection();
+  } catch (err) {
+    showToast(err.message || 'Erro ao atualizar documento.', 'error');
+  }
+}
+
+async function removerHabDoc(target) {
+  const id = Number(target.dataset.id);
+  try {
+    await Service.Habilitacao.deleteDoc(id);
+    _habDocs = _habDocs.filter((d) => d.id !== id);
+    renderHabDocsSection();
+  } catch (err) {
+    showToast(err.message || 'Erro ao remover documento.', 'error');
+  }
+}
+
+// ─── Monitoramento ────────────────────────────────────────────────────────────
+
+function renderMonTarefasSection() {
+  const el = document.getElementById('mon-tarefas-section');
+  if (!el) return;
+  const total = _monTarefas.length;
+  const concluidas = _monTarefas.filter((t) => t.concluida).length;
+  const pct = total > 0 ? Math.round(concluidas / total * 100) : 0;
+
+  el.innerHTML = `
+    <div class="form-section-title" style="margin-top:16px; display:flex; justify-content:space-between; align-items:center;">
+      <span>Checklist de tarefas</span>
+      ${total > 0 ? `<span style="font-size:12px; font-weight:400; color:var(--gray-500);">${concluidas}/${total} (${pct}%)</span>` : ''}
+    </div>
+    ${total > 0 ? `
+      <div style="background:var(--gray-100); height:4px; border-radius:4px; margin-bottom:10px;">
+        <div style="background:var(--green-500); height:4px; border-radius:4px; width:${pct}%;"></div>
+      </div>
+    ` : ''}
+    ${total ? `
+      <div class="check-list">
+        ${_monTarefas.map((t) => `
+          <div class="check-list-item">
+            <input type="checkbox" ${t.concluida ? 'checked' : ''}
+              data-action="licitacoes.toggleMonTarefa" data-id="${t.id}"
+              ${!canWrite() ? 'disabled' : ''}>
+            <span style="${t.concluida ? 'text-decoration:line-through; color:var(--gray-400);' : ''}">${escapeHtml(t.descricao)}</span>
+            ${canWrite() ? `<button type="button" class="icon-btn" data-action="licitacoes.removerMonTarefa" data-id="${t.id}">${ICONS.trash}</button>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    ` : '<p style="font-size:13px; color:var(--gray-400); margin:8px 0;">Nenhuma tarefa cadastrada.</p>'}
+    ${canWrite() ? `
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="mon-nova-tarefa" class="form-input" placeholder="Descrição da tarefa..." style="flex:1;">
+        <button class="btn btn-ghost btn-sm" data-action="licitacoes.addMonTarefa">+ Adicionar</button>
+      </div>
+    ` : ''}
+  `;
+}
+
+function renderMonHistoricoSection() {
+  const el = document.getElementById('mon-historico-section');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="form-section-title" style="margin-top:16px;">Histórico de atualizações</div>
+    ${_monHistorico.length ? `
+      <div class="alert-list">
+        ${_monHistorico.map((h) => `
+          <div class="alert-row">
+            <div class="alert-row-body">
+              <div class="alert-row-title">${escapeHtml(h.descricao)}</div>
+              <div class="alert-row-meta">${formatDate(h.data_registro)}</div>
+            </div>
+            ${canWrite() ? `<button type="button" class="icon-btn" data-action="licitacoes.removerMonHistorico" data-id="${h.id}">${ICONS.trash}</button>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    ` : '<p style="font-size:13px; color:var(--gray-400); margin:8px 0;">Nenhuma atualização registrada.</p>'}
+    ${canWrite() ? `
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="date" id="mon-hist-data" class="form-input" value="${new Date().toISOString().slice(0, 10)}" style="width:150px;">
+        <input type="text" id="mon-hist-desc" class="form-input" placeholder="Descrição..." style="flex:1;">
+        <button class="btn btn-ghost btn-sm" data-action="licitacoes.addMonHistorico">+ Registrar</button>
+      </div>
+    ` : ''}
+  `;
+}
+
+async function abrirMonitoramento(target) {
+  const licitacaoId = Number(target.dataset.id);
+  const licitacao = cache.find((l) => l.id === licitacaoId);
+  _monId = licitacaoId;
+  [_monTarefas, _monHistorico] = await Promise.all([
+    Service.Monitoramento.listTarefas(licitacaoId),
+    Service.Monitoramento.listHistorico(licitacaoId),
+  ]);
+
+  const curStatus = licitacao?.monitoramento_status || 'Em andamento';
+  const bodyHtml = `
+    <div class="form-grid">
+      <div class="form-field span-2">
+        <label>Status geral</label>
+        <select id="mon-status" class="form-input" style="max-width:240px;" ${canWrite() ? '' : 'disabled'}>
+          <option value="Em andamento" ${curStatus === 'Em andamento' ? 'selected' : ''}>Em andamento</option>
+          <option value="Encerrado" ${curStatus === 'Encerrado' ? 'selected' : ''}>Encerrado</option>
+          <option value="Suspenso" ${curStatus === 'Suspenso' ? 'selected' : ''}>Suspenso</option>
+        </select>
+      </div>
+    </div>
+    <div id="mon-tarefas-section"></div>
+    <div id="mon-historico-section"></div>
+    ${canWrite() ? `
+      <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--gray-100);">
+        <button type="button" class="btn btn-ghost btn-sm" data-action="licitacoes.lembrete" data-id="${licitacaoId}">+ Criar lembrete na Agenda</button>
+      </div>
+    ` : ''}
+  `;
+
+  openModal(`Monitoramento — ${escapeHtml(licitacao?.numero_pregao || 'Licitação')}`, bodyHtml, {
+    size: 'md',
+    footerHtml: canWrite()
+      ? `<button type="button" class="btn btn-ghost" data-action="modal.close">Cancelar</button>
+         <button type="button" class="btn btn-primary" data-action="licitacoes.salvarMonitoramento" data-id="${licitacaoId}">Salvar status</button>`
+      : `<button type="button" class="btn btn-ghost" data-action="modal.close">Fechar</button>`,
+  });
+  renderMonTarefasSection();
+  renderMonHistoricoSection();
+}
+
+async function salvarMonitoramento(target) {
+  const licitacaoId = Number(target.dataset.id);
+  try {
+    await Service.updateLicitacao(licitacaoId, {
+      monitoramento_status: byId('mon-status').value,
+    });
+    showToast('Monitoramento atualizado.', 'success');
+    closeModal();
+    await reload();
+  } catch (err) {
+    showToast(err.message || 'Erro ao salvar monitoramento.', 'error');
+  }
+}
+
+async function addMonTarefa() {
+  const descricao = byId('mon-nova-tarefa')?.value.trim();
+  if (!descricao) return showToast('Informe a descrição da tarefa.', 'error');
+  try {
+    const t = await Service.Monitoramento.addTarefa({ licitacao_id: _monId, descricao });
+    _monTarefas.push(t);
+    byId('mon-nova-tarefa').value = '';
+    renderMonTarefasSection();
+  } catch (err) {
+    showToast(err.message || 'Erro ao adicionar tarefa.', 'error');
+  }
+}
+
+async function toggleMonTarefa(target) {
+  const id = Number(target.dataset.id);
+  const t = _monTarefas.find((x) => x.id === id);
+  if (!t) return;
+  try {
+    await Service.Monitoramento.updateTarefa(id, { concluida: !t.concluida });
+    t.concluida = !t.concluida;
+    renderMonTarefasSection();
+  } catch (err) {
+    showToast(err.message || 'Erro ao atualizar tarefa.', 'error');
+  }
+}
+
+async function removerMonTarefa(target) {
+  const id = Number(target.dataset.id);
+  try {
+    await Service.Monitoramento.deleteTarefa(id);
+    _monTarefas = _monTarefas.filter((x) => x.id !== id);
+    renderMonTarefasSection();
+  } catch (err) {
+    showToast(err.message || 'Erro ao remover tarefa.', 'error');
+  }
+}
+
+async function addMonHistorico() {
+  const descricao = byId('mon-hist-desc')?.value.trim();
+  const data_registro = byId('mon-hist-data')?.value;
+  if (!descricao) return showToast('Informe a descrição.', 'error');
+  try {
+    const h = await Service.Monitoramento.addHistorico({ licitacao_id: _monId, data_registro, descricao });
+    _monHistorico.unshift(h);
+    byId('mon-hist-desc').value = '';
+    renderMonHistoricoSection();
+  } catch (err) {
+    showToast(err.message || 'Erro ao registrar histórico.', 'error');
+  }
+}
+
+async function removerMonHistorico(target) {
+  const id = Number(target.dataset.id);
+  try {
+    await Service.Monitoramento.deleteHistorico(id);
+    _monHistorico = _monHistorico.filter((x) => x.id !== id);
+    renderMonHistoricoSection();
+  } catch (err) {
+    showToast(err.message || 'Erro ao remover histórico.', 'error');
+  }
+}
+
 async function excluir(target) {
   const id = Number(target.dataset.id);
   const ok = await confirmDialog('Tem certeza que deseja excluir esta licitação e todos os seus itens?');
@@ -860,4 +1199,18 @@ export const actions = {
   'licitacoes.salvarLembrete': (target) => salvarLembrete(target),
   'licitacoes.resultado': (target) => abrirResultado(target),
   'licitacoes.salvarResultado': () => salvarResultado(),
+  'licitacoes.habilitacao': (target) => abrirHabilitacao(target),
+  'licitacoes.salvarHabilitacao': (target) => salvarHabilitacao(target),
+  'licitacoes.toggleHabImpugnacao': () => { const c = byId('hab-impugnacao')?.checked; byId('hab-impugnacao-obs-field')?.toggleAttribute('hidden', !c); },
+  'licitacoes.toggleHabRecurso': () => { const c = byId('hab-recurso')?.checked; byId('hab-recurso-obs-field')?.toggleAttribute('hidden', !c); },
+  'licitacoes.addHabDoc': () => addHabDoc(),
+  'licitacoes.toggleHabDoc': (target) => toggleHabDoc(target),
+  'licitacoes.removerHabDoc': (target) => removerHabDoc(target),
+  'licitacoes.monitoramento': (target) => abrirMonitoramento(target),
+  'licitacoes.salvarMonitoramento': (target) => salvarMonitoramento(target),
+  'licitacoes.addMonTarefa': () => addMonTarefa(),
+  'licitacoes.toggleMonTarefa': (target) => toggleMonTarefa(target),
+  'licitacoes.removerMonTarefa': (target) => removerMonTarefa(target),
+  'licitacoes.addMonHistorico': () => addMonHistorico(),
+  'licitacoes.removerMonHistorico': (target) => removerMonHistorico(target),
 };

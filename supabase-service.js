@@ -144,6 +144,23 @@ export async function listParticipacoes() {
   ).order('licitacao_id'));
 }
 
+export const Habilitacao = {
+  listDocs: (lid) => handle(sb().from('habilitacao_documentos').select('*').eq('licitacao_id', lid).order('created_at')),
+  addDoc: (p) => handle(sb().from('habilitacao_documentos').insert(p).select('*').single()),
+  updateDoc: (id, p) => handle(sb().from('habilitacao_documentos').update(p).eq('id', id).select('*').single()),
+  deleteDoc: (id) => handle(sb().from('habilitacao_documentos').delete().eq('id', id)),
+};
+
+export const Monitoramento = {
+  listTarefas: (lid) => handle(sb().from('monitoramento_tarefas').select('*').eq('licitacao_id', lid).order('created_at')),
+  addTarefa: (p) => handle(sb().from('monitoramento_tarefas').insert(p).select('*').single()),
+  updateTarefa: (id, p) => handle(sb().from('monitoramento_tarefas').update(p).eq('id', id).select('*').single()),
+  deleteTarefa: (id) => handle(sb().from('monitoramento_tarefas').delete().eq('id', id)),
+  listHistorico: (lid) => handle(sb().from('monitoramento_historico').select('*').eq('licitacao_id', lid).order('data_registro', { ascending: false })),
+  addHistorico: (p) => handle(sb().from('monitoramento_historico').insert(p).select('*').single()),
+  deleteHistorico: (id) => handle(sb().from('monitoramento_historico').delete().eq('id', id)),
+};
+
 export async function createLicitacaoItem(payload) {
   return handle(sb().from('licitacao_itens').insert(payload).select(LICITACAO_ITEM_SELECT).single());
 }

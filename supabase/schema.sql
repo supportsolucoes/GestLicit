@@ -996,3 +996,65 @@ drop trigger if exists protect_role_before_update on public.app_profiles;
 create trigger protect_role_before_update
   before update on public.app_profiles
   for each row execute function public.protect_profile_role();
+
+-- ============================================================
+-- ALTERAÇÕES v1.18 — Habilitação e Monitoramento de Licitações
+-- ============================================================
+
+alter table public.licitacoes
+  add column if not exists habilitacao_status text default 'Aguardando'
+    check (habilitacao_status in ('Aguardando', 'Habilitado', 'Inabilitado')),
+  add column if not exists habilitacao_data date,
+  add column if not exists habilitacao_impugnacao boolean default false,
+  add column if not exists habilitacao_impugnacao_obs text,
+  add column if not exists habilitacao_recurso boolean default false,
+  add column if not exists habilitacao_recurso_obs text,
+  add column if not exists habilitacao_observacoes text,
+  add column if not exists monitoramento_status text default 'Em andamento'
+    check (monitoramento_status in ('Em andamento', 'Encerrado', 'Suspenso'));
+
+create table if not exists public.habilitacao_documentos (
+  id           bigint generated always as identity primary key,
+  licitacao_id bigint not null references public.licitacoes(id) on delete cascade,
+  nome         text not null,
+  status       text not null default 'Pendente'
+    check (status in ('Pendente', 'Entregue', 'Dispensado')),
+  observacao   text,
+  created_at   timestamptz default now()
+);
+
+alter table public.habilitacao_documentos enable row level security;
+create policy "hab_docs_select" on public.habilitacao_documentos for select to authenticated using (true);
+create policy "hab_docs_insert" on public.habilitacao_documentos for insert to authenticated with check (public.get_user_role() in ('administrador', 'usuario'));
+create policy "hab_docs_update" on public.habilitacao_documentos for update to authenticated using (public.get_user_role() in ('administrador', 'usuario')) with check (public.get_user_role() in ('administrador', 'usuario'));
+create policy "hab_docs_delete" on public.habilitacao_documentos for delete to authenticated using (public.get_user_role() in ('administrador', 'usuario'));
+
+create table if not exists public.monitoramento_tarefas (
+  id           bigint generated always as identity primary key,
+  licitacao_id bigint not null references public.licitacoes(id) on delete cascade,
+  descricao    text not null,
+  concluida    boolean not null default false,
+  ordem        int default 0,
+  created_at   timestamptz default now()
+);
+
+alter table public.monitoramento_tarefas enable row level security;
+create policy "mon_tarefas_select" on public.monitoramento_tarefas for select to authenticated using (true);
+create policy "mon_tarefas_insert" on public.monitoramento_tarefas for insert to authenticated with check (public.get_user_role() in ('administrador', 'usuario'));
+create policy "mon_tarefas_update" on public.monitoramento_tarefas for update to authenticated using (public.get_user_role() in ('administrador', 'usuario')) with check (public.get_user_role() in ('administrador', 'usuario'));
+create policy "mon_tarefas_delete" on public.monitoramento_tarefas for delete to authenticated using (public.get_user_role() in ('administrador', 'usuario'));
+
+create table if not exists public.monitoramento_historico (
+  id             bigint generated always as identity primary key,
+  licitacao_id   bigint not null references public.licitacoes(id) on delete cascade,
+  data_registro  date not null default current_date,
+  descricao      text not null,
+  created_at     timestamptz default now()
+);
+
+alter table public.monitoramento_historico enable row level security;
+create policy "mon_hist_select" on public.monitoramento_historico for select to authenticated using (true);
+create policy "mon_hist_insert" on public.monitoramento_historico for insert to authenticated with check (public.get_user_role() in ('administrador', 'usuario'));
+create policy "mon_hist_delete" on public.monitoramento_historico for delete to authenticated using (public.get_user_role() in ('administrador', 'usuario'));
+
+notify pgrst, 'reload schema';
