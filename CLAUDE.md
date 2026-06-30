@@ -214,6 +214,22 @@ Bloco 15 — **Redesign visual + Logo + campos de embalagem em Produtos** — se
 - **CSS para forms 3 colunas**: `.form-grid.cols-3` ativa grid de 3 colunas; `.form-field.span-3` usa `grid-column: 1 / -1` (não `span 3`) para garantir sempre nova linha — `span 3` com auto-placement pode encaixar o item no col 3 de uma linha existente se houver espaço; `1 / -1` força col 1 sempre.
 - **Bug fix em `_crud.js`**: `renderField` calculava `spanClass` com `field.span === 2 ? ' span-2' : ''` — campos com `span: 3` recebiam string vazia e a classe nunca era adicionada. Corrigido para `field.span ? \` span-\${field.span}\` : ''`.
 
+Bloco 16 — **Visualização de documentos no grid + Remover arquivo + Lembretes globais + Diferenciação de eventos na Agenda** — vários ajustes de UX e um bugfix de escopo:
+- **Bug fix crítico em `_crud.js`**: `renderField` estava definida fora de `buildCrudModule` e usava `config.actionPrefix` (para o botão "Remover arquivo") sem ter acesso ao parâmetro. Corrigido adicionando `config` como terceiro parâmetro de `renderField` e atualizando os dois call sites internos (`abrirVisualizacao` e `abrirFormulario`).
+- **Botão "Ver documento" no grid**: todos os módulos com upload de arquivo agora exibem um ícone de download diretamente na linha da tabela (ou card) — sem precisar abrir o formulário. Implementado via `extraRowActions` em Certidões (existente) e acrescentado manualmente em Contratos (`.record-actions` do card), Empenhos e Faturamento (`<td class="row-actions">`). O botão usa `data-action="ui.verArquivo"` com `data-url` para chamar o handler global em `app.js` que gera URL assinada via `SupabaseService.getSignedUrl`.
+- **Botão "Remover arquivo"** no formulário de edição: comportamento padrão no `_crud.js` — remove o arquivo do bucket `documentos` via `removeArquivoStorage` e zera `arquivo_url` no banco. Módulos podem sobrescrever com `config.onRemoveArquivo(record)`.
+- **Órgãos**: layout do formulário migrado para `gridCols: 3`; CEP movido para a mesma linha de CNPJ e UF (linha 1: Nome; linha 2: CNPJ | UF | CEP; depois logradouro, bairro etc.).
+- **Agenda — diferenciação de eventos por origem**:
+  - Azul `#2563EB` → evento criado diretamente na Agenda (sem `referencia_tipo`)
+  - Roxo `#7C3AED` → lembrete criado a partir de outro módulo (`referencia_tipo` preenchido)
+  - Âmbar `#F59E0B` → "Iniciar renovação" calculado de `certidoes.data_renovacao` (novo tipo `certidao-renovacao`)
+  - Cores existentes: verde/laranja/vermelho para vencimentos de Ata/Contrato/Certidão
+  - Visão Lista ganhou coluna "Origem" (badge "Direto" ou nome do módulo de origem)
+  - Clicar num lembrete vinculado exibe modal com origem e botão "Ir para [módulo]"
+- **Ação genérica `agenda.criarLembrete`**: qualquer módulo pode criar um lembrete vinculado adicionando `data-action="agenda.criarLembrete" data-ref-tipo="<tipo>" data-ref-id="<id>" data-ref-label="<label>"` num botão. O handler abre o modal de lembrete e salva via `agenda.salvarLembreteGenerico`. Botão "+ Lembrete" adicionado em: Contratos (card), Atas (barra de ações do detalhe), Empenhos (ícone sino na tabela).
+- `supabase-service.js`: nova função `removeArquivoStorage(path)` que chama `sb().storage.from('documentos').remove([path])`.
+- `app.js`: novo handler global `ui.verArquivo` que chama `SupabaseService.getSignedUrl(url)` e abre em nova aba.
+
 ## Pendências conhecidas (próximos passos sugeridos)
 
 - Bloco de **Habilitação** e **Monitoramento** (vistos na referência visual do Licitei) ainda não têm equivalente no GestLicit.

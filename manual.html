@@ -433,6 +433,7 @@
       </div>
 
       <div class="tip"><strong>Navegar a partir daqui</strong>Dentro do contrato salvo, use "Ver Atas do Órgão" para checar se o mesmo órgão também tem uma Ata, e "Ver Empenhos deste Contrato" para ver o que já foi empenhado contra ele.</div>
+      <div class="tip"><strong>Criar lembrete</strong>No card do contrato na listagem, clique em "+ Lembrete" para criar um compromisso na <a href="#agenda">Agenda</a> vinculado a este contrato. O lembrete aparecerá em roxo no calendário.</div>
     </section>
 
     <section class="modulo" id="atas">
@@ -469,6 +470,7 @@
       </div>
 
       <div class="tip"><strong>Navegar a partir daqui</strong>Use "Ver Contratos do Órgão" e "Ver Empenhos desta Ata" no topo da tela de detalhe para ir direto aos registros relacionados.</div>
+      <div class="tip"><strong>Criar lembrete</strong>Na barra de botões da tela de detalhe da Ata, clique em "+ Lembrete" para criar um compromisso na <a href="#agenda">Agenda</a> vinculado a esta ata. O lembrete aparecerá em roxo no calendário.</div>
     </section>
 
     <section class="modulo" id="empenhos">
@@ -517,6 +519,7 @@
       </div>
 
       <div class="tip"><strong>Navegar a partir daqui</strong>Use "Ver Ata vinculada" e "Ver Contrato vinculado" no topo do formulário (só aparecem se o respectivo vínculo estiver preenchido) para abrir direto o registro de origem. O botão "Ver Faturamento(s)" leva para as faturas já lançadas contra este Empenho.</div>
+      <div class="tip"><strong>Criar lembrete</strong>Na linha do empenho na listagem, clique no ícone de sino para criar um compromisso na <a href="#agenda">Agenda</a> vinculado a este empenho. O lembrete aparecerá em roxo no calendário.</div>
     </section>
 
     <section class="modulo" id="faturamento">
@@ -665,10 +668,10 @@
           <dt>Número</dt><dd>Número de controle da certidão, se houver.</dd>
           <dt>Data de emissão / validade</dt><dd>A validade alimenta o alerta de vencimento (sininho, Dashboard e Agenda).</dd>
           <dt>Iniciar renovação em</dt><dd>Data em que o processo de renovação deve começar — que costuma ser anterior ao vencimento, já que certidões têm burocracia diferente para serem renovadas. Quando essa data se aproximar, o sininho de alertas dispara um aviso específico de "Renovar", separado do alerta de vencimento.</dd>
-          <dt>Anexar arquivo</dt><dd>Envie o PDF da certidão para ter sempre à mão na hora de montar uma proposta.</dd>
+          <dt>Anexar arquivo</dt><dd>Envie o PDF da certidão para ter sempre à mão na hora de montar uma proposta. O ícone de download aparece diretamente na linha da listagem — não é necessário abrir o cadastro para visualizar. Para excluir só o anexo sem apagar o registro, abra o cadastro e clique em "Remover arquivo".</dd>
         </dl>
         <div class="warn"><strong>Fique de olho</strong>A situação na listagem muda de "Regular" para "Vence em Xd" e depois "Vencido" automaticamente — renove antes de chegar no vermelho.</div>
-        <div class="tip"><strong>Dois alertas independentes</strong>O campo <em>Validade</em> gera um alerta de vencimento; o campo <em>Iniciar renovação em</em> gera um alerta separado de "Renovar". Isso permite ser avisado com antecedência suficiente para dar entrada no processo, sem precisar esperar o documento vencer.</div>
+        <div class="tip"><strong>Dois alertas independentes na Agenda</strong>O campo <em>Validade</em> gera um evento <span style="color:#DC2626;font-weight:600;">vermelho</span> de vencimento; o campo <em>Iniciar renovação em</em> gera um evento <span style="color:#F59E0B;font-weight:600;">âmbar</span> separado na <a href="#agenda">Agenda</a>. Isso permite ser avisado com antecedência suficiente para dar entrada no processo, sem precisar esperar o documento vencer.</div>
       </div>
     </section>
 
@@ -704,10 +707,23 @@
       </div>
       <div class="card">
         <h3><span class="step-no">2</span>O que aparece no calendário</h3>
-        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Além dos compromissos criados aqui, o calendário também mostra (sem precisar cadastrar nada): vencimento de Atas vigentes, de Contratos vigentes e de Certidões — cada um com uma cor diferente. Clicar num evento de vencimento leva direto para o módulo correspondente.</p>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Além dos compromissos criados aqui, o calendário exibe seis tipos de eventos — cada um com uma cor própria:</p>
+        <dl class="fields">
+          <dt style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2563EB;"></span> Azul — Evento direto</dt><dd>Compromisso criado diretamente na Agenda (sem vínculo com outro módulo).</dd>
+          <dt style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#7C3AED;"></span> Roxo — Lembrete vinculado</dt><dd>Lembrete criado a partir de Licitação, Contrato, Ata ou Empenho pelo botão "+ Lembrete" presente em cada um desses módulos. Clicar abre um modal que mostra a origem e oferece o botão "Ir para [módulo]".</dd>
+          <dt style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#F59E0B;"></span> Âmbar — Iniciar renovação (Certidão)</dt><dd>Calculado automaticamente de <em>Iniciar renovação em</em> de cada certidão. Aparece no dia certo para lembrar de dar entrada no processo, com antecedência ao vencimento.</dd>
+          <dt style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#16A34A;"></span> Verde — Vencimento de Ata</dt><dd>Calculado de <em>Vigência fim</em> de Atas com situação Vigente.</dd>
+          <dt style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#D97706;"></span> Laranja — Vencimento de Contrato</dt><dd>Calculado de <em>Vigência fim</em> de Contratos com situação Vigente.</dd>
+          <dt style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;"></span> Vermelho — Vencimento de Certidão</dt><dd>Calculado de <em>Data de validade</em> de cada certidão cadastrada.</dd>
+        </dl>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:10px;">Os eventos automáticos (âmbar, verde, laranja, vermelho) não precisam ser cadastrados e não aparecem na visão Lista — só no calendário. Clicar em qualquer um deles exibe um modal explicativo com botão para ir ao módulo de origem.</p>
         <div class="shot-wrap">
           <img class="shot" src="Imagens/manual/agenda_mes.png" alt="Agenda em visão de Mês, com eventos coloridos por tipo" />
         </div>
+      </div>
+      <div class="card">
+        <h3><span class="step-no">3</span>Visão Lista — coluna Origem</h3>
+        <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Na visão Lista a coluna <strong>Origem</strong> mostra de onde veio cada registro: <em>Direto</em> (criado aqui na Agenda) ou o nome do módulo de origem (Licitação, Contrato, Ata, Empenho) quando o lembrete foi criado a partir de outro módulo.</p>
       </div>
     </section>
 
