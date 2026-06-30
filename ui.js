@@ -34,6 +34,9 @@ export function openModal(title, bodyHtml, { size = 'md', footerHtml = '' } = {}
   overlay.addEventListener('mousedown', (event) => {
     if (event.target === overlay) closeModal();
   });
+  root.querySelectorAll('form').forEach((form) => {
+    form.addEventListener('submit', (e) => e.preventDefault());
+  });
   return overlay;
 }
 
