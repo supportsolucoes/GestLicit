@@ -523,6 +523,18 @@ function bindGlobalEvents() {
     if (action === 'ui.toggleMobileSidebar') { byId('sidebar').classList.toggle('mobile-open'); return; }
     if (action === 'ui.toggleNotifications') { toggleDropdown('notifications-dropdown'); return; }
     if (action === 'ui.toggleUserMenu') { renderUserMenu(); toggleDropdown('user-menu-dropdown'); return; }
+    if (action === 'ui.verArquivo') {
+      const url = target.dataset.url;
+      if (url) {
+        try {
+          const signedUrl = await SupabaseService.getSignedUrl(url);
+          window.open(signedUrl, '_blank');
+        } catch (err) {
+          showToast(err.message || 'Erro ao gerar link do arquivo.', 'error');
+        }
+      }
+      return;
+    }
     if (action === 'auth.logout') { _notificationsPopupShown = false; await SupabaseService.signOut(); return; }
     if (action === 'modal.close' || action === 'modal.cancel') { closeModal(); return; }
     if (action === 'modal.backdrop') { return; }

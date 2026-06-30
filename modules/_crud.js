@@ -36,7 +36,10 @@ function renderField(field, record) {
     inputHtml = `<input type="text" id="${id}" value="${escapeHtml(value)}" list="${listId}" autocomplete="off" />
       <datalist id="${listId}">${(field.options || []).map((o) => `<option value="${escapeHtml(o)}"></option>`).join('')}</datalist>`;
   } else if (field.type === 'file') {
-    inputHtml = `<input type="file" id="${id}" />${record?.arquivo_url ? `<div style="font-size:12px;color:var(--gray-500);margin-top:4px;">Arquivo atual: ${escapeHtml(record.nome_arquivo || 'anexo')}</div>` : ''}`;
+    const verBtn = record?.arquivo_url
+      ? `<button type="button" class="link-btn" style="margin-top:6px;text-align:left;" data-action="ui.verArquivo" data-url="${escapeHtml(record.arquivo_url)}">Ver arquivo atual</button>`
+      : '';
+    inputHtml = `<input type="file" id="${id}" />${verBtn}`;
   } else {
     inputHtml = `<input type="text" id="${id}" value="${escapeHtml(value)}" />`;
   }
@@ -123,8 +126,14 @@ export function buildCrudModule(config) {
     const record = cache.find((r) => r.id === id);
     if (!record) return;
     const gridClass = `form-grid${config.gridCols ? ` cols-${config.gridCols}` : ''}`;
-    const viewFields = config.fields.filter((f) => f.type !== 'file');
-    const bodyHtml = `<div class="${gridClass}">${viewFields.map((f) => renderField(f, record)).join('')}</div>`;
+    const bodyHtml = `<div class="${gridClass}">${config.fields.map((f) => {
+      if (f.type === 'file') {
+        if (!record?.arquivo_url) return '';
+        const sc = f.span ? ` span-${f.span}` : '';
+        return `<div class="form-field${sc}"><label>${f.label}</label><button type="button" class="link-btn" data-action="ui.verArquivo" data-url="${escapeHtml(record.arquivo_url)}">Ver arquivo atual</button></div>`;
+      }
+      return renderField(f, record);
+    }).join('')}</div>`;
     openModal(config.singular || config.title, bodyHtml, {
       size: config.modalSize || 'md',
       footerHtml: `<button type="button" class="btn btn-ghost" data-action="modal.close">Fechar</button>`,
