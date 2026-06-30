@@ -6,7 +6,7 @@ import {
 } from './state.js';
 import { byId, qsa, formatDate, escapeHtml } from './helpers.js';
 import { ICONS, PAGE_META, ROLES } from './constants.js';
-import { showToast, setLoading, closeModal } from './ui.js';
+import { showToast, setLoading, openModal, closeModal } from './ui.js';
 
 import * as Dashboard from './modules/dashboard.js';
 import * as Participacoes from './modules/participacoes.js';
