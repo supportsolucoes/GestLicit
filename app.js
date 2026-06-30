@@ -359,8 +359,7 @@ async function showAppShell(session, profile) {
   } finally {
     setLoading(false);
   }
-  const initialPage = location.hash.replace('#', '') || 'dashboard';
-  navigateTo(MODULES[initialPage] ? initialPage : 'dashboard');
+  navigateTo('dashboard');
   refreshNotifications();
   _passwordChanging = false;
 }
