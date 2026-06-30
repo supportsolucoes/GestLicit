@@ -36,10 +36,14 @@ function renderField(field, record) {
     inputHtml = `<input type="text" id="${id}" value="${escapeHtml(value)}" list="${listId}" autocomplete="off" />
       <datalist id="${listId}">${(field.options || []).map((o) => `<option value="${escapeHtml(o)}"></option>`).join('')}</datalist>`;
   } else if (field.type === 'file') {
-    const verBtn = record?.arquivo_url
-      ? `<button type="button" class="link-btn" style="margin-top:6px;text-align:left;" data-action="ui.verArquivo" data-url="${escapeHtml(record.arquivo_url)}">Ver arquivo atual</button>`
-      : '';
-    inputHtml = `<input type="file" id="${id}" />${verBtn}`;
+    let verBtns = '';
+    if (record?.arquivo_url) {
+      verBtns = `<div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap;">
+        <button type="button" class="link-btn" style="text-align:left;" data-action="ui.verArquivo" data-url="${escapeHtml(record.arquivo_url)}">Ver arquivo atual</button>
+        ${config.onRemoveArquivo ? `<button type="button" class="link-btn" style="color:var(--danger);" data-action="${config.actionPrefix}.removerArquivo" data-id="${record.id}">Remover arquivo</button>` : ''}
+      </div>`;
+    }
+    inputHtml = `<input type="file" id="${id}" />${verBtns}`;
   } else {
     inputHtml = `<input type="text" id="${id}" value="${escapeHtml(value)}" />`;
   }
@@ -205,12 +209,29 @@ export function buildCrudModule(config) {
     }
   }
 
+  async function removerArquivo(target) {
+    const id = Number(target.dataset.id);
+    const record = cache.find((r) => r.id === id);
+    if (!record?.arquivo_url) return;
+    const ok = await confirmDialog('Remover o arquivo anexado? Ele será excluído permanentemente do armazenamento.');
+    if (!ok) return;
+    try {
+      await config.onRemoveArquivo(record);
+      showToast('Arquivo removido.', 'success');
+      await reload();
+      abrirFormulario(id);
+    } catch (err) {
+      showToast(err.message || 'Erro ao remover arquivo.', 'error');
+    }
+  }
+
   const actions = {
     [`${config.actionPrefix}.novo`]: () => abrirFormulario(null),
     [`${config.actionPrefix}.editar`]: (target) => abrirFormulario(Number(target.dataset.id)),
     [`${config.actionPrefix}.salvar`]: (target) => salvar(target),
     [`${config.actionPrefix}.excluir`]: (target) => excluir(target),
     ...(config.allowView ? { [`${config.actionPrefix}.visualizar`]: (target) => abrirVisualizacao(Number(target.dataset.id)) } : {}),
+    ...(config.onRemoveArquivo ? { [`${config.actionPrefix}.removerArquivo`]: (target) => removerArquivo(target) } : {}),
   };
 
   return { render, actions };

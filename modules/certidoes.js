@@ -72,6 +72,10 @@ const mod = buildCrudModule({
     const path = await Service.uploadCertidaoArquivo(file, saved.id);
     await Service.Certidoes.update(saved.id, { arquivo_url: path });
   },
+  onRemoveArquivo: async (record) => {
+    await Service.removeArquivoStorage(record.arquivo_url);
+    await Service.Certidoes.update(record.id, { arquivo_url: null });
+  },
 });
 
 export const render = mod.render;

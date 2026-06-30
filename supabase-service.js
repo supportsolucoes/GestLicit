@@ -468,6 +468,11 @@ export async function getSignedUrl(path) {
   return data.signedUrl;
 }
 
+export async function removeArquivoStorage(path) {
+  const { error } = await sb().storage.from(DOCUMENTOS_BUCKET).remove([path]);
+  if (error) throw error;
+}
+
 export async function uploadCertidaoArquivo(file, certidaoId) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
   const path = `Certidoes/${Date.now()}_${safeName}`;
