@@ -214,6 +214,12 @@ async function refreshNotifications() {
     const visiveis = items.filter((i) => !lidasSet.has(notifKey(i.tipo, i.registroId, i.dataRef)));
     visiveis.sort((a, b) => a.dias - b.dias);
 
+    // Pop-up na primeira abertura da sessão
+    if (!_notificationsPopupShown) {
+      _notificationsPopupShown = true;
+      if (visiveis.length > 0) openNotificationsPopup(visiveis);
+    }
+
     byId('notif-dot').classList.toggle('hidden', visiveis.length === 0);
     byId('notifications-dropdown').innerHTML = `
       <div class="dropdown-header">Alertas e lembretes</div>
@@ -271,6 +277,65 @@ async function handleLoginSubmit(event) {
 
 // Controla se estamos no meio de uma troca de senha (evita re-entrada no onAuthStateChange)
 let _passwordChanging = false;
+
+// Pop-up de alertas: exibido uma vez por sessão logo após o login
+let _notificationsPopupShown = false;
+let _notifPopupItems = [];
+
+function _notifUrgencyStyle(item) {
+  if (item.vencido || item.dias <= 7) return { bg: 'var(--danger-bg)', border: 'var(--danger)', color: 'var(--danger)' };
+  if (item.dias <= 30)               return { bg: 'var(--warning-bg)', border: 'var(--warning)', color: 'var(--warning)' };
+  return { bg: 'var(--info-bg)', border: 'var(--info)', color: 'var(--info)' };
+}
+
+function openNotificationsPopup(visiveis) {
+  _notifPopupItems = visiveis;
+  const n = visiveis.length;
+  const bodyHtml = `
+    <p style="font-size:13px; color:var(--gray-500); margin:0 0 14px;">
+      Você tem <strong>${n}</strong> alerta${n > 1 ? 's' : ''} pendente${n > 1 ? 's' : ''} que precisam de atenção.
+    </p>
+    <div style="display:flex; flex-direction:column; gap:8px; max-height:360px; overflow-y:auto; padding-right:4px;">
+      ${visiveis.map((i) => {
+        const s = _notifUrgencyStyle(i);
+        return `
+          <div style="display:flex; align-items:flex-start; gap:10px; padding:11px 13px;
+                      background:${s.bg}; border-radius:var(--radius-sm); border-left:3px solid ${s.border};">
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:600; font-size:13.5px; color:var(--gray-900);">${i.titulo}</div>
+              <div style="font-size:12px; color:var(--gray-500); margin-top:2px;">${i.meta}</div>
+            </div>
+            <button type="button" class="icon-btn" title="Dispensar"
+              data-action="notif.marcarLido"
+              data-tipo="${i.tipo}" data-registro-id="${i.registroId}" data-data-ref="${i.dataRef || ''}"
+              style="flex-shrink:0; color:${s.color};">${ICONS.check}</button>
+          </div>`;
+      }).join('')}
+    </div>
+  `;
+  openModal('Alertas e lembretes', bodyHtml, {
+    size: 'md',
+    footerHtml: `
+      <button type="button" class="btn btn-ghost" data-action="notif.marcarTodasLidas">Dispensar todas</button>
+      <button type="button" class="btn btn-primary" data-action="modal.close">Fechar</button>
+    `,
+  });
+}
+
+async function marcarTodasNotificacoesLidas() {
+  if (!_notifPopupItems.length) { closeModal(); return; }
+  try {
+    await Promise.all(_notifPopupItems.map((i) =>
+      SupabaseService.marcarNotificacaoLida(currentUser()?.id, {
+        tipo: i.tipo, registroId: Number(i.registroId), dataRef: i.dataRef || null,
+      })
+    ));
+    closeModal();
+    await refreshNotifications();
+  } catch (err) {
+    showToast(err.message || 'Erro ao dispensar alertas.', 'error');
+  }
+}
 
 async function showAppShell(session, profile) {
   // Guard: já está visível (ex.: evento USER_UPDATED chegou depois de já ter aberto)
@@ -447,6 +512,7 @@ function bindGlobalEvents() {
       return;
     }
     if (action === 'notif.marcarLido') { marcarNotificacaoLida(target); return; }
+    if (action === 'notif.marcarTodasLidas') { marcarTodasNotificacoesLidas(); return; }
     if (action === 'ui.toggleSidebar') {
       toggleSidebar();
       const sb = byId('sidebar');
@@ -458,7 +524,7 @@ function bindGlobalEvents() {
     if (action === 'ui.toggleMobileSidebar') { byId('sidebar').classList.toggle('mobile-open'); return; }
     if (action === 'ui.toggleNotifications') { toggleDropdown('notifications-dropdown'); return; }
     if (action === 'ui.toggleUserMenu') { renderUserMenu(); toggleDropdown('user-menu-dropdown'); return; }
-    if (action === 'auth.logout') { await SupabaseService.signOut(); return; }
+    if (action === 'auth.logout') { _notificationsPopupShown = false; await SupabaseService.signOut(); return; }
     if (action === 'modal.close' || action === 'modal.cancel') { closeModal(); return; }
     if (action === 'modal.backdrop') { return; }
 
