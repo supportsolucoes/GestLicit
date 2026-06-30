@@ -15,6 +15,14 @@ export async function signIn(email, password) {
   return handle(sb().auth.signInWithPassword({ email, password }));
 }
 
+export async function updatePassword(newPassword) {
+  return handle(sb().auth.updateUser({ password: newPassword }));
+}
+
+export async function clearMustChangePassword(userId) {
+  return handle(sb().from('app_profiles').update({ must_change_password: false }).eq('id', userId));
+}
+
 export async function signOut() {
   await sb().auth.signOut();
 }

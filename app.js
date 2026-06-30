@@ -269,15 +269,17 @@ async function handleLoginSubmit(event) {
   }
 }
 
-async function bootstrapApp(session) {
-  let profile = null;
-  try {
-    profile = await SupabaseService.getProfile(session.user.id);
-  } catch (err) {
-    console.warn('Perfil ainda não disponível', err);
+// Controla se estamos no meio de uma troca de senha (evita re-entrada no onAuthStateChange)
+let _passwordChanging = false;
+
+async function showAppShell(session, profile) {
+  // Guard: já está visível (ex.: evento USER_UPDATED chegou depois de já ter aberto)
+  if (!byId('app-shell').classList.contains('hidden')) {
+    updateUserChip();
+    return;
   }
-  setSession(session, profile);
   byId('login-screen').classList.add('hidden');
+  byId('change-password-screen').classList.add('hidden');
   byId('app-shell').classList.remove('hidden');
   renderSidebar();
   if (localStorage.getItem('gl-sidebar')) {
@@ -295,11 +297,95 @@ async function bootstrapApp(session) {
   const initialPage = location.hash.replace('#', '') || 'dashboard';
   navigateTo(MODULES[initialPage] ? initialPage : 'dashboard');
   refreshNotifications();
+  _passwordChanging = false;
+}
+
+async function bootstrapApp(session) {
+  let profile = null;
+  try {
+    profile = await SupabaseService.getProfile(session.user.id);
+  } catch (err) {
+    console.warn('Perfil ainda não disponível', err);
+  }
+  setSession(session, profile);
+
+  // Se o app já está aberto (ex.: refresh de token, USER_UPDATED), só atualiza o chip
+  if (!byId('app-shell').classList.contains('hidden')) {
+    updateUserChip();
+    return;
+  }
+
+  if (!_passwordChanging && profile?.must_change_password) {
+    byId('login-screen').classList.add('hidden');
+    byId('change-password-screen').classList.remove('hidden');
+    return;
+  }
+
+  await showAppShell(session, profile);
 }
 
 function showLoginScreen() {
   byId('app-shell').classList.add('hidden');
+  byId('change-password-screen').classList.add('hidden');
   byId('login-screen').classList.remove('hidden');
+}
+
+// ---------------------------------------------------------------
+// Troca de senha no primeiro acesso
+// ---------------------------------------------------------------
+function showChangePwError(message) {
+  const el = byId('change-pw-error');
+  el.textContent = message;
+  el.classList.remove('hidden');
+}
+
+async function handleChangePasswordSubmit(event) {
+  event.preventDefault();
+  byId('change-pw-error').classList.add('hidden');
+  const nova = byId('cp-nova').value;
+  const confirma = byId('cp-confirma').value;
+  if (nova.length < 6) {
+    showChangePwError('A nova senha precisa ter pelo menos 6 caracteres.');
+    return;
+  }
+  if (nova !== confirma) {
+    showChangePwError('As senhas não conferem. Verifique e tente novamente.');
+    return;
+  }
+  setLoading(true);
+  _passwordChanging = true;
+  try {
+    const session = await SupabaseService.getSession();
+    // Atualiza a senha (dispara USER_UPDATED → bootstrapApp, mas _passwordChanging=true evita loop)
+    await SupabaseService.updatePassword(nova);
+    // Remove a flag no banco
+    await SupabaseService.clearMustChangePassword(session.user.id);
+    // Busca perfil atualizado e abre o app
+    const freshSession = await SupabaseService.getSession();
+    const freshProfile = await SupabaseService.getProfile(freshSession.user.id);
+    setSession(freshSession, freshProfile);
+    await showAppShell(freshSession, freshProfile);
+  } catch (err) {
+    _passwordChanging = false;
+    showChangePwError(err.message || 'Não foi possível alterar a senha.');
+    setLoading(false);
+  }
+}
+
+// ---------------------------------------------------------------
+// Utilitário: toggle mostrar/ocultar senha
+// ---------------------------------------------------------------
+function setupPwToggle(btnId, inputId) {
+  const btn = byId(btnId);
+  const inp = byId(inputId);
+  if (!btn || !inp) return;
+  btn.innerHTML = ICONS.eye;
+  btn.addEventListener('click', () => {
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    btn.innerHTML = show ? ICONS.eyeOff : ICONS.eye;
+    btn.title = show ? 'Ocultar senha' : 'Mostrar senha';
+  });
 }
 
 // ---------------------------------------------------------------
@@ -327,6 +413,10 @@ function initSidebarTooltip() {
 
 function bindGlobalEvents() {
   byId('login-form').addEventListener('submit', handleLoginSubmit);
+  byId('change-pw-form').addEventListener('submit', handleChangePasswordSubmit);
+  setupPwToggle('btn-eye-login', 'login-password');
+  setupPwToggle('btn-eye-cp1', 'cp-nova');
+  setupPwToggle('btn-eye-cp2', 'cp-confirma');
   initSidebarTooltip();
 
   document.addEventListener('click', (event) => {

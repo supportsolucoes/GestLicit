@@ -35,9 +35,53 @@
       </div>
       <div class="form-field" style="margin-bottom:6px;">
         <label for="login-password">Senha</label>
-        <input type="password" id="login-password" required autocomplete="current-password" />
+        <div class="pw-wrap">
+          <input type="password" id="login-password" required autocomplete="current-password" />
+          <button type="button" class="btn-eye" id="btn-eye-login" tabindex="-1" title="Mostrar senha"></button>
+        </div>
       </div>
       <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:18px;" id="login-submit">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<div id="change-password-screen" class="login-screen hidden">
+  <div class="login-card">
+    <div class="login-brand">
+      <svg class="brand-mark" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M24 3 L41 9 L41 28 Q40 39 24 45 Q8 39 7 28 L7 9 Z" fill="#1E3A5F"/>
+        <path d="M24 3 L41 9 L41 16 L7 16 L7 9 Z" fill="#B5790A"/>
+        <line x1="7" y1="16" x2="41" y2="16" stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+        <text x="24" y="32" text-anchor="middle" dominant-baseline="central"
+              font-family="Georgia, 'Times New Roman', serif"
+              font-size="16" font-weight="700" fill="white" letter-spacing="1">GL</text>
+      </svg>
+      <div class="brand-name">GestLicit</div>
+    </div>
+    <p class="login-slogan">Defina sua nova senha de acesso</p>
+    <p style="font-size:13px; color:var(--gray-600); margin:-18px 0 24px; line-height:1.5;">
+      Por segurança, crie uma senha pessoal antes de continuar.
+    </p>
+
+    <div id="change-pw-error" class="login-error hidden"></div>
+
+    <form id="change-pw-form">
+      <div class="form-field" style="margin-bottom:14px;">
+        <label for="cp-nova">Nova senha</label>
+        <div class="pw-wrap">
+          <input type="password" id="cp-nova" required minlength="6" autocomplete="new-password" />
+          <button type="button" class="btn-eye" id="btn-eye-cp1" tabindex="-1" title="Mostrar senha"></button>
+        </div>
+      </div>
+      <div class="form-field" style="margin-bottom:6px;">
+        <label for="cp-confirma">Confirmar nova senha</label>
+        <div class="pw-wrap">
+          <input type="password" id="cp-confirma" required minlength="6" autocomplete="new-password" />
+          <button type="button" class="btn-eye" id="btn-eye-cp2" tabindex="-1" title="Mostrar senha"></button>
+        </div>
+      </div>
+      <p style="font-size:12.5px; color:var(--gray-500); margin-top:10px;">Mínimo de 6 caracteres.</p>
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:18px;">Definir nova senha</button>
     </form>
   </div>
 </div>

@@ -87,7 +87,12 @@ function abrirFormularioNovo() {
     <div class="form-grid">
       <div class="form-field span-2"><label>Nome *</label><input id="f-novo-nome" /></div>
       <div class="form-field"><label>E-mail *</label><input type="email" id="f-novo-email" /></div>
-      <div class="form-field"><label>Senha provisória *</label><input type="text" id="f-novo-senha" placeholder="Mín. 6 caracteres" /></div>
+      <div class="form-field"><label>Senha provisória *</label>
+        <div class="pw-wrap">
+          <input type="password" id="f-novo-senha" placeholder="Mín. 6 caracteres" autocomplete="new-password" />
+          <button type="button" class="btn-eye" id="btn-eye-novo-senha" tabindex="-1" title="Mostrar senha"></button>
+        </div>
+      </div>
       <div class="form-field span-2">
         <label>Perfil de acesso</label>
         <select id="f-novo-role">${ROLES.map((r) => `<option value="${r.id}" ${r.id === 'usuario' ? 'selected' : ''}>${r.label}</option>`).join('')}</select>
@@ -105,6 +110,18 @@ function abrirFormularioNovo() {
       <button type="button" class="btn btn-primary" data-action="usuarios.criar">Criar usuário</button>
     `,
   });
+  // Toggle mostrar/ocultar senha provisória
+  const btnEye = byId('btn-eye-novo-senha');
+  const inpSenha = byId('f-novo-senha');
+  if (btnEye && inpSenha) {
+    btnEye.innerHTML = ICONS.eye;
+    btnEye.addEventListener('click', () => {
+      const show = inpSenha.type === 'password';
+      inpSenha.type = show ? 'text' : 'password';
+      btnEye.innerHTML = show ? ICONS.eyeOff : ICONS.eye;
+      btnEye.title = show ? 'Ocultar senha' : 'Mostrar senha';
+    });
+  }
   const syncPaginasVisibility = () => {
     byId('f-novo-paginas-wrap').style.display = byId('f-novo-role').value === 'administrador' ? 'none' : '';
   };

@@ -1071,3 +1071,15 @@ alter table public.orgaos
   add column if not exists responsavel_email text;
 
 notify pgrst, 'reload schema';
+
+-- ============================================================
+-- ALTERAÇÕES v1.20 — Troca de senha no primeiro acesso
+-- O administrador cria o usuário com uma senha provisória e
+-- must_change_password=true. No primeiro login, o app exibe uma
+-- tela de redefinição antes de permitir qualquer acesso.
+-- ============================================================
+
+alter table public.app_profiles
+  add column if not exists must_change_password boolean not null default false;
+
+notify pgrst, 'reload schema';

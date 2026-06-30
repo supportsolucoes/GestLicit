@@ -79,6 +79,7 @@ Deno.serve(async (req) => {
         role,
         paginas_permitidas: role === 'administrador' ? [] : (Array.isArray(paginas_permitidas) ? paginas_permitidas : []),
         ativo: true,
+        must_change_password: true,
       })
       .eq('id', created.user.id);
 
