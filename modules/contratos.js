@@ -149,6 +149,7 @@ function renderTable() {
         <div class="record-side">
           <p class="record-value">${formatCurrency(valor)}</p>
           <div class="record-actions">
+            ${c.arquivo_url ? `<button class="icon-btn" data-action="ui.verArquivo" data-url="${escapeHtml(c.arquivo_url)}" title="Ver documento">${ICONS.download}</button>` : ''}
             <button class="icon-btn" data-action="contratos.editar" data-id="${c.id}" title="Editar">${ICONS.edit}</button>
             ${isAdmin() ? `<button class="icon-btn" data-action="contratos.excluir" data-id="${c.id}" title="Excluir">${ICONS.trash}</button>` : ''}
           </div>

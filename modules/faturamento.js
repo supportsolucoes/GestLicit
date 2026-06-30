@@ -120,6 +120,7 @@ function renderTable() {
             <td>${badge(saldo.situacaoEfetiva, STATUS_COLOR[saldo.situacaoEfetiva] || 'muted')}</td>
             <td>${saldo.percentual.toFixed(0)}% <span style="color:var(--gray-500); font-size:11.5px;">(${formatCurrency(saldo.recebido)})</span></td>
             <td class="row-actions">
+              ${f.arquivo_url ? `<button class="icon-btn" data-action="ui.verArquivo" data-url="${escapeHtml(f.arquivo_url)}" title="Ver documento">${ICONS.download}</button>` : ''}
               <button class="icon-btn" data-action="faturamento.editar" data-id="${f.id}" title="Editar">${ICONS.edit}</button>
               ${isAdmin() ? `<button class="icon-btn" data-action="faturamento.excluir" data-id="${f.id}" title="Excluir">${ICONS.trash}</button>` : ''}
             </td>
