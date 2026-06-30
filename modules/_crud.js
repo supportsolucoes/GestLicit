@@ -143,6 +143,7 @@ export function buildCrudModule(config) {
         <button type="button" class="btn btn-primary" data-action="${config.actionPrefix}.salvar" data-id="${id || ''}">Salvar</button>
       `,
     });
+    if (config.afterOpen) config.afterOpen(record);
   }
 
   async function salvar(target) {
