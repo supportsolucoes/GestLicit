@@ -1,7 +1,7 @@
 import * as Service from '../supabase-service.js';
 import { buildCrudModule } from './_crud.js';
 import { TIPOS_CERTIDAO, ICONS } from '../constants.js';
-import { formatDate, alertLevel } from '../helpers.js';
+import { formatDate, alertLevel, escapeHtml } from '../helpers.js';
 import { badge } from '../ui.js';
 
 const mod = buildCrudModule({
@@ -43,6 +43,9 @@ const mod = buildCrudModule({
       </div>
     `;
   },
+  extraRowActions: (r) => r.arquivo_url
+    ? `<button class="icon-btn" data-action="ui.verArquivo" data-url="${escapeHtml(r.arquivo_url)}" title="Ver documento">${ICONS.download}</button>`
+    : '',
   columns: [
     { key: 'tipo', label: 'Tipo' },
     { key: 'numero', label: 'Número' },
