@@ -2,6 +2,7 @@ import { canWrite, isAdmin, refreshLookups } from '../state.js';
 import { byId, escapeHtml, parseNumber, formatMoneyInputValue } from '../helpers.js';
 import { openModal, closeModal, confirmDialog, showToast, renderEmptyState } from '../ui.js';
 import { ICONS } from '../constants.js';
+import { removeArquivoStorage } from '../supabase-service.js';
 
 function fieldValue(field, record) {
   const raw = record?.[field.key];
@@ -40,7 +41,7 @@ function renderField(field, record) {
     if (record?.arquivo_url) {
       verBtns = `<div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap;">
         <button type="button" class="link-btn" style="text-align:left;" data-action="ui.verArquivo" data-url="${escapeHtml(record.arquivo_url)}">Ver arquivo atual</button>
-        ${config.onRemoveArquivo ? `<button type="button" class="link-btn" style="color:var(--danger);" data-action="${config.actionPrefix}.removerArquivo" data-id="${record.id}">Remover arquivo</button>` : ''}
+        <button type="button" class="link-btn" style="color:var(--danger);" data-action="${config.actionPrefix}.removerArquivo" data-id="${record.id}">Remover arquivo</button>
       </div>`;
     }
     inputHtml = `<input type="file" id="${id}" />${verBtns}`;
@@ -216,7 +217,12 @@ export function buildCrudModule(config) {
     const ok = await confirmDialog('Remover o arquivo anexado? Ele será excluído permanentemente do armazenamento.');
     if (!ok) return;
     try {
-      await config.onRemoveArquivo(record);
+      if (config.onRemoveArquivo) {
+        await config.onRemoveArquivo(record);
+      } else {
+        await removeArquivoStorage(record.arquivo_url);
+        await config.service.update(record.id, { arquivo_url: null });
+      }
       showToast('Arquivo removido.', 'success');
       await reload();
       abrirFormulario(id);
@@ -230,8 +236,8 @@ export function buildCrudModule(config) {
     [`${config.actionPrefix}.editar`]: (target) => abrirFormulario(Number(target.dataset.id)),
     [`${config.actionPrefix}.salvar`]: (target) => salvar(target),
     [`${config.actionPrefix}.excluir`]: (target) => excluir(target),
+    [`${config.actionPrefix}.removerArquivo`]: (target) => removerArquivo(target),
     ...(config.allowView ? { [`${config.actionPrefix}.visualizar`]: (target) => abrirVisualizacao(Number(target.dataset.id)) } : {}),
-    ...(config.onRemoveArquivo ? { [`${config.actionPrefix}.removerArquivo`]: (target) => removerArquivo(target) } : {}),
   };
 
   return { render, actions };
