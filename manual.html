@@ -595,11 +595,13 @@
         <dl class="fields">
           <dt>Nome do Órgão *</dt><dd>Obrigatório.</dd>
           <dt>CNPJ / UF / Cidade</dt><dd>Dados de identificação, usados na busca da listagem.</dd>
-          <dt>Endereço (Logradouro, Número, Bairro, Complemento, CEP)</dt><dd>Endereço completo do órgão — usado para compor automaticamente o corpo do <strong>Atestado de Capacidade Técnica</strong> gerado pelo sistema a partir dos Empenhos.</dd>
-          <dt>Responsável (Nome, CPF, Cargo)</dt><dd>Dados de quem assina o atestado pelo órgão — também usados na geração automática do documento.</dd>
+          <dt>CEP</dt><dd>Ao sair do campo, o sistema consulta o ViaCEP e preenche automaticamente Logradouro, Bairro, Cidade e UF — basta confirmar ou corrigir se necessário.</dd>
+          <dt>Endereço (Logradouro, Número, Bairro, Complemento)</dt><dd>Endereço completo do órgão — usado no corpo do <strong>Atestado de Capacidade Técnica</strong> gerado automaticamente a partir dos Empenhos.</dd>
+          <dt>Responsável (Nome, CPF, Cargo, E-mail)</dt><dd>Dados de quem assina o atestado pelo órgão. O e-mail é útil para contato direto com o responsável do órgão.</dd>
           <dt>Observações</dt><dd>Texto livre — ex.: histórico de relacionamento, particularidades de pagamento.</dd>
         </dl>
         <div class="tip"><strong>Dica</strong>Preencha o endereço e o responsável antes de gerar Atestados de Capacidade Técnica — esses dados aparecem automaticamente no documento gerado.</div>
+        <div class="tip"><strong>Ícone de olho (visualizar)</strong>Além de Editar e Excluir, cada linha tem um ícone de olho que abre os dados em modo leitura — sem risco de alteração acidental. Útil para consulta rápida.</div>
       </div>
     </section>
 
@@ -659,12 +661,14 @@
       </div>
       <div class="card">
         <dl class="fields">
-          <dt>Tipo de Certidão *</dt><dd>Obrigatório — escolha da lista (FGTS, Federal, Estadual, Municipal, Trabalhista...).</dd>
+          <dt>Tipo de Certidão *</dt><dd>Obrigatório — campo de texto livre com sugestões (FGTS, CND Federal, Trabalhista, Estadual, Municipal). Você pode digitar qualquer nome de certidão que não esteja na lista.</dd>
           <dt>Número</dt><dd>Número de controle da certidão, se houver.</dd>
           <dt>Data de emissão / validade</dt><dd>A validade alimenta o alerta de vencimento (sininho, Dashboard e Agenda).</dd>
+          <dt>Iniciar renovação em</dt><dd>Data em que o processo de renovação deve começar — que costuma ser anterior ao vencimento, já que certidões têm burocracia diferente para serem renovadas. Quando essa data se aproximar, o sininho de alertas dispara um aviso específico de "Renovar", separado do alerta de vencimento.</dd>
           <dt>Anexar arquivo</dt><dd>Envie o PDF da certidão para ter sempre à mão na hora de montar uma proposta.</dd>
         </dl>
         <div class="warn"><strong>Fique de olho</strong>A situação na listagem muda de "Regular" para "Vence em Xd" e depois "Vencido" automaticamente — renove antes de chegar no vermelho.</div>
+        <div class="tip"><strong>Dois alertas independentes</strong>O campo <em>Validade</em> gera um alerta de vencimento; o campo <em>Iniciar renovação em</em> gera um alerta separado de "Renovar". Isso permite ser avisado com antecedência suficiente para dar entrada no processo, sem precisar esperar o documento vencer.</div>
       </div>
     </section>
 
@@ -710,7 +714,7 @@
     <section class="modulo" id="notificacoes">
       <div class="modulo-eyebrow">Controle e prazos</div>
       <h2>Sininho de alertas</h2>
-      <p class="dek">O ícone de sino no topo da tela mostra, num só lugar, tudo que está prestes a vencer ou que foi marcado como lembrete: Atas, Contratos e Certidões vencendo (90/60/30/15/7 dias) e lembretes de Agenda.</p>
+      <p class="dek">O ícone de sino no topo da tela mostra, num só lugar, tudo que está prestes a vencer ou que foi marcado como lembrete: Atas, Contratos e Certidões vencendo (90/60/30/15/7 dias), alertas de renovação de Certidões (campo "Iniciar renovação em") e lembretes de Agenda.</p>
       <div class="card">
         <dl class="fields">
           <dt>Marcar como lido</dt><dd>Clique no ícone de check ao lado de qualquer alerta para dispensá-lo da lista. Isso vale só para você — outros usuários continuam vendo o alerta normalmente.</dd>
@@ -773,8 +777,12 @@
         <p style="font-size:13px; color:var(--gray-500); margin-top:-6px;">Dados do fornecedor que aparecem no <strong>Atestado de Capacidade Técnica</strong> gerado automaticamente a partir dos Empenhos. Preencha uma vez e ficará salvo para todos os atestados futuros.</p>
         <dl class="fields">
           <dt>Razão Social *</dt><dd>Obrigatório para salvar. Nome completo da empresa conforme o CNPJ.</dd>
-          <dt>CNPJ / Inscrição Estadual</dt><dd>Dados fiscais que aparecem no cabeçalho do atestado.</dd>
-          <dt>Endereço completo</dt><dd>Logradouro, número, complemento, bairro, cidade, UF e CEP — usados no corpo do documento.</dd>
+          <dt>CNPJ</dt><dd>A formatação XX.XXX.XXX/XXXX-XX é aplicada automaticamente enquanto você digita.</dd>
+          <dt>Inscrição Estadual</dt><dd>Texto livre — formatos variam por estado.</dd>
+          <dt>Telefone / E-mail / Nome do Contato</dt><dd>Dados de contato comercial da empresa.</dd>
+          <dt>CEP</dt><dd>Ao sair do campo, o sistema consulta o ViaCEP e preenche automaticamente Logradouro, Bairro, Cidade e UF.</dd>
+          <dt>Endereço completo</dt><dd>Logradouro, número, complemento, bairro, cidade, UF — usados no corpo do Atestado.</dd>
+          <dt>Responsável Legal (Nome e CPF)</dt><dd>Pessoa que assina documentos em nome da empresa. O CPF é formatado automaticamente (XXX.XXX.XXX-XX) enquanto digita.</dd>
         </dl>
       </div>
       <div class="card">
