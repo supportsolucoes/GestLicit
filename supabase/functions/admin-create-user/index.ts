@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { email, password, nome, role, paginas_permitidas } = body;
+    const { email, password, nome, role, paginas_permitidas, must_change_password } = body;
 
     if (!email || !password || !nome) {
       return json({ error: 'Informe nome, e-mail e senha.' }, 400);
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
         role,
         paginas_permitidas: role === 'administrador' ? [] : (Array.isArray(paginas_permitidas) ? paginas_permitidas : []),
         ativo: true,
-        must_change_password: true,
+        must_change_password: must_change_password !== false,
       })
       .eq('id', created.user.id);
 

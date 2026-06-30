@@ -97,6 +97,12 @@ function abrirFormularioNovo() {
         <label>Perfil de acesso</label>
         <select id="f-novo-role">${ROLES.map((r) => `<option value="${r.id}" ${r.id === 'usuario' ? 'selected' : ''}>${r.label}</option>`).join('')}</select>
       </div>
+      <div class="form-field span-2 checkbox-field">
+        <label>
+          <input type="checkbox" id="f-novo-must-change-pw" checked />
+          Exigir troca de senha no primeiro acesso
+        </label>
+      </div>
     </div>
     <div class="form-field" id="f-novo-paginas-wrap" style="margin-top:14px;">
       <label>Páginas liberadas</label>
@@ -134,6 +140,7 @@ async function criarUsuario() {
   const email = byId('f-novo-email').value.trim();
   const senha = byId('f-novo-senha').value;
   const role = byId('f-novo-role').value;
+  const mustChangePw = byId('f-novo-must-change-pw')?.checked ?? true;
   if (!nome || !email || !senha) {
     showToast('Informe nome, e-mail e senha.', 'error');
     return;
@@ -142,6 +149,7 @@ async function criarUsuario() {
     await Service.adminCreateUser({
       nome, email, password: senha, role,
       paginas_permitidas: role === 'usuario' ? readChecklist('f-novo-pag') : [],
+      must_change_password: mustChangePw,
     });
     showToast('Usuário criado com sucesso.', 'success');
     closeModal();
