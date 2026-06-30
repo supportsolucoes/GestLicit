@@ -8,7 +8,7 @@ import { openModal, closeModal, confirmDialog, showToast, badge, renderEmptyStat
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const DIAS_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const DIAS_LONGO = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-const TIPO_LABEL     = { agenda: 'Evento direto', lembrete: 'Lembrete vinculado', ata: 'Vencimento de Ata', contrato: 'Vencimento de Contrato', certidao: 'Vencimento de Certidão' };
+const TIPO_LABEL     = { agenda: 'Evento direto', lembrete: 'Lembrete vinculado', ata: 'Vencimento de Ata', contrato: 'Vencimento de Contrato', certidao: 'Vencimento de Certidão', 'certidao-renovacao': 'Iniciar renovação (Certidão)' };
 const TIPO_PAGE      = { ata: 'atas', contrato: 'contratos', certidao: 'certidoes' };
 const TIPO_LABEL_REF = { licitacao: 'Licitação', contrato: 'Contrato', ata: 'Ata', empenho: 'Empenho' };
 const TIPO_PAGE_REF  = { licitacao: 'licitacoes', contrato: 'contratos', ata: 'atas', empenho: 'empenhos' };
@@ -118,6 +118,9 @@ async function reloadEventos() {
   for (const cert of certidoes) {
     if (cert.data_validade) {
       todosEventos.push({ id: `certidao-${cert.id}`, tipo: 'certidao', titulo: `Vencimento — Certidão ${cert.tipo}`, data: cert.data_validade, cor: '#DC2626', raw: cert });
+    }
+    if (cert.data_renovacao) {
+      todosEventos.push({ id: `certidao-renov-${cert.id}`, tipo: 'certidao-renovacao', titulo: `Iniciar renovação — ${cert.tipo}`, data: cert.data_renovacao, cor: '#F59E0B', raw: cert });
     }
   }
 }
@@ -294,6 +297,17 @@ function abrirEvento(target) {
       footerHtml: `
         <button type="button" class="btn btn-ghost" data-action="modal.close">Fechar</button>
         ${pagina ? `<button type="button" class="btn btn-primary" data-action="nav.go" data-page="${pagina}">Ir para ${origemLabel}</button>` : ''}
+      `,
+    });
+    return;
+  }
+
+  if (evento.tipo === 'certidao-renovacao') {
+    openModal(evento.titulo, `<p style="color:var(--gray-500); font-size:13.5px;">Prazo para iniciar o processo de renovação desta certidão (${formatDate(evento.data)}). Para alterar a data, edite o cadastro da certidão.</p>`, {
+      size: 'sm',
+      footerHtml: `
+        <button type="button" class="btn btn-ghost" data-action="modal.close">Fechar</button>
+        <button type="button" class="btn btn-primary" data-action="nav.go" data-page="certidoes">Ir para Certidões</button>
       `,
     });
     return;
