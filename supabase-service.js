@@ -462,7 +462,7 @@ export async function getSignedUrl(path) {
 
 export async function uploadCertidaoArquivo(file, certidaoId) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const path = `Certidão/${Date.now()}_${safeName}`;
+  const path = `Certidoes/${Date.now()}_${safeName}`;
   const { error } = await sb().storage.from(DOCUMENTOS_BUCKET).upload(path, file);
   if (error) throw error;
   return path;

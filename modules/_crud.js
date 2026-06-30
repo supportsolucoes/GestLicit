@@ -31,6 +31,10 @@ function renderField(field, record) {
     inputHtml = `<input type="text" id="${id}" value="${escapeHtml(value)}" ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''} />`;
   } else if (field.type === 'currency') {
     inputHtml = `<div class="input-currency-wrap"><input type="text" id="${id}" value="${formatMoneyInputValue(value)}" placeholder="0,00" /></div>`;
+  } else if (field.type === 'datalist') {
+    const listId = `${id}-list`;
+    inputHtml = `<input type="text" id="${id}" value="${escapeHtml(value)}" list="${listId}" autocomplete="off" />
+      <datalist id="${listId}">${(field.options || []).map((o) => `<option value="${escapeHtml(o)}"></option>`).join('')}</datalist>`;
   } else if (field.type === 'file') {
     inputHtml = `<input type="file" id="${id}" />${record?.arquivo_url ? `<div style="font-size:12px;color:var(--gray-500);margin-top:4px;">Arquivo atual: ${escapeHtml(record.nome_arquivo || 'anexo')}</div>` : ''}`;
   } else {
@@ -104,6 +108,7 @@ export function buildCrudModule(config) {
               ${config.columns.map((c) => `<td>${c.render ? c.render(r) : escapeHtml(r[c.key] ?? '-')}</td>`).join('')}
               <td class="row-actions">
                 ${config.extraRowActions ? config.extraRowActions(r) : ''}
+                ${config.allowView ? `<button class="icon-btn" data-action="${config.actionPrefix}.visualizar" data-id="${r.id}" title="Visualizar">${ICONS.eye}</button>` : ''}
                 <button class="icon-btn" data-action="${config.actionPrefix}.editar" data-id="${r.id}" title="Editar">${ICONS.edit}</button>
                 ${isAdmin() ? `<button class="icon-btn" data-action="${config.actionPrefix}.excluir" data-id="${r.id}" title="Excluir">${ICONS.trash}</button>` : ''}
               </td>
@@ -112,6 +117,19 @@ export function buildCrudModule(config) {
         </tbody>
       </table>
     `;
+  }
+
+  async function abrirVisualizacao(id) {
+    const record = cache.find((r) => r.id === id);
+    if (!record) return;
+    const gridClass = `form-grid${config.gridCols ? ` cols-${config.gridCols}` : ''}`;
+    const viewFields = config.fields.filter((f) => f.type !== 'file');
+    const bodyHtml = `<div class="${gridClass}">${viewFields.map((f) => renderField(f, record)).join('')}</div>`;
+    openModal(config.singular || config.title, bodyHtml, {
+      size: config.modalSize || 'md',
+      footerHtml: `<button type="button" class="btn btn-ghost" data-action="modal.close">Fechar</button>`,
+    });
+    byId('modal-root').querySelectorAll('input, select, textarea').forEach((el) => { el.disabled = true; });
   }
 
   async function abrirFormulario(id) {
@@ -182,6 +200,7 @@ export function buildCrudModule(config) {
     [`${config.actionPrefix}.editar`]: (target) => abrirFormulario(Number(target.dataset.id)),
     [`${config.actionPrefix}.salvar`]: (target) => salvar(target),
     [`${config.actionPrefix}.excluir`]: (target) => excluir(target),
+    ...(config.allowView ? { [`${config.actionPrefix}.visualizar`]: (target) => abrirVisualizacao(Number(target.dataset.id)) } : {}),
   };
 
   return { render, actions };

@@ -30,6 +30,7 @@ export const ICONS = {
   check: `${ICELL}<path d="M4 12.5l5 5 11-11"/></svg>`,
   chevronLeft: `${ICELL}<polyline points="15 18 9 12 15 6"/><polyline points="20 18 14 12 20 6"/></svg>`,
   chevronRight: `${ICELL}<polyline points="9 18 15 12 9 6"/><polyline points="4 18 10 12 4 6"/></svg>`,
+  eye: `${ICELL}<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
 };
 
 export const PAGE_META = [

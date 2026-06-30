@@ -4,10 +4,43 @@ import { byId, escapeHtml, todayISO } from '../helpers.js';
 import { showToast, confirmDialog, badge, renderEmptyState } from '../ui.js';
 import { ICONS, UFS } from '../constants.js';
 
-const EMPRESA_KEYS = ['razao_social', 'cnpj', 'ie', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf', 'cep'];
+const EMPRESA_KEYS = [
+  'razao_social', 'cnpj', 'ie',
+  'telefone', 'email', 'contato',
+  'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf', 'cep',
+  'responsavel_nome', 'responsavel_cpf',
+];
 
 function empresaVal(key) {
   return escapeHtml(getState().lookups.settings?.[`empresa_${key}`] || '');
+}
+
+// ---- máscaras ----
+function maskCnpj(v) {
+  return v.replace(/\D/g, '').replace(/(\d{2})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1/$2').replace(/(\d{4})(\d{1,2})$/, '$1-$2').slice(0, 18);
+}
+function maskCpf(v) {
+  return v.replace(/\D/g, '').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2').slice(0, 14);
+}
+function maskCep(v) {
+  return v.replace(/\D/g, '').replace(/(\d{5})(\d)/, '$1-$2').slice(0, 9);
+}
+
+async function buscarCep(cep) {
+  const digits = cep.replace(/\D/g, '');
+  if (digits.length !== 8) return;
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+    const data = await res.json();
+    if (data.erro) { showToast('CEP não encontrado.', 'error'); return; }
+    byId('emp-logradouro').value = data.logradouro || '';
+    byId('emp-bairro').value = data.bairro || '';
+    byId('emp-cidade').value = data.localidade || '';
+    const ufSel = byId('emp-uf');
+    if (ufSel) ufSel.value = data.uf || '';
+  } catch {
+    showToast('Erro ao consultar CEP.', 'error');
+  }
 }
 
 export async function render(container) {
@@ -24,10 +57,20 @@ export async function render(container) {
       <p style="color:var(--gray-500); font-size:13px; margin:4px 0 14px;">
         Dados do fornecedor que aparecem no corpo do Atestado de Capacidade Técnica gerado automaticamente pelo sistema.
       </p>
+
+      <div class="form-section-title" style="margin-top:0;">Identificação</div>
       <div class="form-grid cols-3">
         <div class="form-field span-2"><label>Razão Social *</label><input type="text" id="emp-razao_social" value="${empresaVal('razao_social')}" placeholder="Nome completo da empresa" /></div>
-        <div class="form-field"><label>CNPJ</label><input type="text" id="emp-cnpj" value="${empresaVal('cnpj')}" placeholder="00.000.000/0000-00" /></div>
-        <div class="form-field"><label>Inscrição Estadual</label><input type="text" id="emp-ie" value="${empresaVal('ie')}" placeholder="000.000.000.000" /></div>
+        <div class="form-field"><label>CNPJ</label><input type="text" id="emp-cnpj" value="${empresaVal('cnpj')}" placeholder="00.000.000/0000-00" maxlength="18" /></div>
+        <div class="form-field"><label>Inscrição Estadual</label><input type="text" id="emp-ie" value="${empresaVal('ie')}" placeholder="Inscrição Estadual" /></div>
+        <div class="form-field"><label>Telefone</label><input type="text" id="emp-telefone" value="${empresaVal('telefone')}" placeholder="(00) 00000-0000" /></div>
+        <div class="form-field"><label>E-mail</label><input type="email" id="emp-email" value="${empresaVal('email')}" placeholder="contato@empresa.com.br" /></div>
+        <div class="form-field span-2"><label>Nome do Contato</label><input type="text" id="emp-contato" value="${empresaVal('contato')}" placeholder="Pessoa para contato" /></div>
+      </div>
+
+      <div class="form-section-title">Endereço</div>
+      <div class="form-grid cols-3">
+        <div class="form-field"><label>CEP</label><input type="text" id="emp-cep" value="${empresaVal('cep')}" placeholder="00000-000" maxlength="9" /></div>
         <div class="form-field span-2"><label>Logradouro</label><input type="text" id="emp-logradouro" value="${empresaVal('logradouro')}" placeholder="Rua, Avenida..." /></div>
         <div class="form-field"><label>Número</label><input type="text" id="emp-numero" value="${empresaVal('numero')}" /></div>
         <div class="form-field"><label>Complemento</label><input type="text" id="emp-complemento" value="${empresaVal('complemento')}" /></div>
@@ -39,8 +82,14 @@ export async function render(container) {
             ${UFS.map((uf) => `<option value="${uf}" ${empresaVal('uf') === uf ? 'selected' : ''}>${uf}</option>`).join('')}
           </select>
         </div>
-        <div class="form-field"><label>CEP</label><input type="text" id="emp-cep" value="${empresaVal('cep')}" placeholder="00000-000" /></div>
       </div>
+
+      <div class="form-section-title">Responsável Legal</div>
+      <div class="form-grid cols-3">
+        <div class="form-field span-2"><label>Nome Completo</label><input type="text" id="emp-responsavel_nome" value="${empresaVal('responsavel_nome')}" placeholder="Nome do responsável legal" /></div>
+        <div class="form-field"><label>CPF</label><input type="text" id="emp-responsavel_cpf" value="${empresaVal('responsavel_cpf')}" placeholder="000.000.000-00" maxlength="14" /></div>
+      </div>
+
       ${canWrite() ? `<div style="margin-top:14px;"><button type="button" class="btn btn-primary btn-sm" data-action="configuracoes.salvarEmpresa">Salvar dados da empresa</button></div>` : ''}
     </div>
 
@@ -77,6 +126,15 @@ export async function render(container) {
     byId('f-portal-transparencia-key').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') salvarChave();
     });
+
+    // Máscara CNPJ
+    byId('emp-cnpj').addEventListener('input', (e) => { e.target.value = maskCnpj(e.target.value); });
+    // Máscara CPF responsável
+    byId('emp-responsavel_cpf').addEventListener('input', (e) => { e.target.value = maskCpf(e.target.value); });
+    // Máscara CEP + busca ViaCEP
+    const cepEl = byId('emp-cep');
+    cepEl.addEventListener('input', (e) => { e.target.value = maskCep(e.target.value); });
+    cepEl.addEventListener('blur', (e) => buscarCep(e.target.value));
   }
 
   await renderDemoStatus();

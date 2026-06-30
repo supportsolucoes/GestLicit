@@ -188,6 +188,23 @@ async function refreshNotifications() {
     certidoes.forEach((c) => {
       const alert = alertLevel(c.data_validade);
       if (alert) items.push({ tipo: 'certidao', registroId: c.id, dataRef: c.data_validade, titulo: `Certidão ${escapeHtml(c.tipo)}`, meta: `vence em ${formatDate(c.data_validade)}`, dias: alert.days, vencido: alert.level === 'vencido' });
+      if (c.data_renovacao) {
+        const alertRen = alertLevel(c.data_renovacao);
+        const jaVencida = alertLevel(c.data_validade)?.level === 'vencido';
+        if (alertRen && !jaVencida) {
+          items.push({
+            tipo: 'certidao_renovacao',
+            registroId: c.id,
+            dataRef: c.data_renovacao,
+            titulo: `Renovar: ${escapeHtml(c.tipo)}`,
+            meta: alertRen.level === 'vencido'
+              ? `Renovação em atraso (prevista ${formatDate(c.data_renovacao)})`
+              : `Iniciar renovação em ${formatDate(c.data_renovacao)}`,
+            dias: alertRen.days,
+            vencido: alertRen.level === 'vencido',
+          });
+        }
+      }
     });
     eventos.filter((e) => e.lembrete).forEach((e) => {
       const alert = alertLevel(e.data);

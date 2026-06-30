@@ -1058,3 +1058,16 @@ create policy "mon_hist_insert" on public.monitoramento_historico for insert to 
 create policy "mon_hist_delete" on public.monitoramento_historico for delete to authenticated using (public.get_user_role() in ('administrador', 'usuario'));
 
 notify pgrst, 'reload schema';
+
+
+-- ============================================================
+-- ALTERAÇÕES v1.19 — Certidões: data_renovacao | Órgãos: responsavel_email
+-- ============================================================
+
+alter table public.certidoes
+  add column if not exists data_renovacao date;
+
+alter table public.orgaos
+  add column if not exists responsavel_email text;
+
+notify pgrst, 'reload schema';

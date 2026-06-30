@@ -10,6 +10,7 @@ const mod = buildCrudModule({
   singular: 'Órgão',
   description: 'Órgãos públicos, prefeituras e autarquias com quem a empresa já disputou licitações.',
   modalSize: 'lg',
+  allowView: true,
   searchKeys: ['nome', 'cnpj', 'cidade'],
   columns: [
     { key: 'nome', label: 'Nome' },
@@ -29,7 +30,8 @@ const mod = buildCrudModule({
     { key: 'cep', label: 'CEP' },
     { key: 'responsavel_nome', label: 'Responsável (Nome)', span: 2 },
     { key: 'responsavel_cpf', label: 'Responsável (CPF)' },
-    { key: 'responsavel_cargo', label: 'Cargo do Responsável', span: 2 },
+    { key: 'responsavel_cargo', label: 'Cargo do Responsável' },
+    { key: 'responsavel_email', label: 'E-mail do Responsável', span: 2 },
     { key: 'observacoes', label: 'Observações', type: 'textarea', span: 2 },
   ],
   afterChange: refreshLookups,

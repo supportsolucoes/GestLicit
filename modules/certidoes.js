@@ -15,6 +15,7 @@ const mod = buildCrudModule({
     const regulares = records.filter((r) => !alertLevel(r.data_validade));
     const a30d = records.filter((r) => { const al = alertLevel(r.data_validade); return al && al.level !== 'vencido' && al.days <= 30; });
     const vencidas = records.filter((r) => alertLevel(r.data_validade)?.level === 'vencido');
+    const renovacao = records.filter((r) => r.data_renovacao && alertLevel(r.data_renovacao) && alertLevel(r.data_validade)?.level !== 'vencido');
     return `
       <div class="kpi-card">
         <div class="kpi-icon kpi-icon--blue">${ICONS.certidoes}</div>
@@ -46,6 +47,7 @@ const mod = buildCrudModule({
     { key: 'tipo', label: 'Tipo' },
     { key: 'numero', label: 'Número' },
     { key: 'data_validade', label: 'Validade', render: (r) => formatDate(r.data_validade) },
+    { key: 'data_renovacao', label: 'Iniciar Renovação', render: (r) => r.data_renovacao ? formatDate(r.data_renovacao) : '-' },
     {
       key: 'situacao',
       label: 'Situação',
@@ -58,10 +60,11 @@ const mod = buildCrudModule({
     },
   ],
   fields: [
-    { key: 'tipo', label: 'Tipo de Certidão', type: 'select', options: TIPOS_CERTIDAO, required: true },
+    { key: 'tipo', label: 'Tipo de Certidão', type: 'datalist', options: TIPOS_CERTIDAO, required: true },
     { key: 'numero', label: 'Número' },
     { key: 'data_emissao', label: 'Data de emissão', type: 'date' },
     { key: 'data_validade', label: 'Data de validade', type: 'date' },
+    { key: 'data_renovacao', label: 'Iniciar renovação em', type: 'date' },
     { key: 'observacoes', label: 'Observações', type: 'textarea', span: 2 },
     { key: 'arquivo', label: 'Anexar arquivo', type: 'file', span: 2 },
   ],
