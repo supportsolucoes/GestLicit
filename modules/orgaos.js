@@ -49,7 +49,7 @@ const mod = buildCrudModule({
     { key: 'cnpj', label: 'CNPJ' },
     { key: 'uf', label: 'UF', type: 'select', options: UFS },
     { key: 'cidade', label: 'Cidade' },
-    { key: 'logradouro', label: 'Logradouro', span: 2 },
+    { key: 'logradouro', label: 'Logradouro' },
     { key: 'numero', label: 'Número' },
     { key: 'bairro', label: 'Bairro' },
     { key: 'complemento', label: 'Complemento' },
