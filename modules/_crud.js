@@ -10,7 +10,7 @@ function fieldValue(field, record) {
   return raw ?? '';
 }
 
-function renderField(field, record) {
+function renderField(field, record, config) {
   const value = fieldValue(field, record);
   const id = `f-${field.key}`;
   const spanClass = field.span ? ` span-${field.span}` : '';
@@ -137,7 +137,7 @@ export function buildCrudModule(config) {
         const sc = f.span ? ` span-${f.span}` : '';
         return `<div class="form-field${sc}"><label>${f.label}</label><button type="button" class="link-btn" data-action="ui.verArquivo" data-url="${escapeHtml(record.arquivo_url)}">Ver arquivo atual</button></div>`;
       }
-      return renderField(f, record);
+      return renderField(f, record, config);
     }).join('')}</div>`;
     openModal(config.singular || config.title, bodyHtml, {
       size: config.modalSize || 'md',
@@ -149,7 +149,7 @@ export function buildCrudModule(config) {
   async function abrirFormulario(id) {
     const record = id ? cache.find((r) => r.id === id) : null;
     const gridClass = `form-grid${config.gridCols ? ` cols-${config.gridCols}` : ''}`;
-    const bodyHtml = `<div class="${gridClass}">${config.fields.map((f) => renderField(f, record)).join('')}</div>`;
+    const bodyHtml = `<div class="${gridClass}">${config.fields.map((f) => renderField(f, record, config)).join('')}</div>`;
     openModal(id ? `Editar ${config.singular || config.title}` : `Novo ${config.singular || config.title}`, bodyHtml, {
       size: config.modalSize || 'md',
       footerHtml: `
