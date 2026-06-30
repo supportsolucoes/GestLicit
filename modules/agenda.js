@@ -8,8 +8,10 @@ import { openModal, closeModal, confirmDialog, showToast, badge, renderEmptyStat
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const DIAS_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const DIAS_LONGO = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-const TIPO_LABEL = { agenda: 'Compromisso', ata: 'Vencimento de Ata', contrato: 'Vencimento de Contrato', certidao: 'Vencimento de Certidão' };
-const TIPO_PAGE = { ata: 'atas', contrato: 'contratos', certidao: 'certidoes' };
+const TIPO_LABEL     = { agenda: 'Evento direto', lembrete: 'Lembrete vinculado', ata: 'Vencimento de Ata', contrato: 'Vencimento de Contrato', certidao: 'Vencimento de Certidão' };
+const TIPO_PAGE      = { ata: 'atas', contrato: 'contratos', certidao: 'certidoes' };
+const TIPO_LABEL_REF = { licitacao: 'Licitação', contrato: 'Contrato', ata: 'Ata', empenho: 'Empenho' };
+const TIPO_PAGE_REF  = { licitacao: 'licitacoes', contrato: 'contratos', ata: 'atas', empenho: 'empenhos' };
 
 const crudMod = buildCrudModule({
   actionPrefix: 'agenda',
@@ -30,6 +32,7 @@ const crudMod = buildCrudModule({
         return `${formatDate(r.data)}${sufixo}`;
       },
     },
+    { key: 'referencia_tipo', label: 'Origem', render: (r) => r.referencia_tipo ? badge(TIPO_LABEL_REF[r.referencia_tipo] || r.referencia_tipo, 'info') : badge('Direto', 'muted') },
     { key: 'lembrete', label: 'Lembrete', render: (r) => (r.lembrete ? badge('Ativo', 'info') : badge('Sem lembrete', 'muted')) },
   ],
   fields: [
@@ -99,7 +102,8 @@ async function reloadEventos() {
   ]);
   todosEventos = [];
   for (const e of eventos) {
-    todosEventos.push({ id: `agenda-${e.id}`, tipo: 'agenda', titulo: e.titulo, data: e.data, cor: '#2563EB', raw: e });
+    const vinculado = !!e.referencia_tipo;
+    todosEventos.push({ id: `agenda-${e.id}`, tipo: vinculado ? 'lembrete' : 'agenda', titulo: e.titulo, data: e.data, cor: vinculado ? '#7C3AED' : '#2563EB', raw: e });
   }
   for (const a of atas) {
     if (a.situacao === 'Vigente' && a.vigencia_fim) {
@@ -281,6 +285,20 @@ function abrirEvento(target) {
     return;
   }
 
+  if (evento.tipo === 'lembrete') {
+    const refTipo = evento.raw.referencia_tipo;
+    const pagina = TIPO_PAGE_REF[refTipo];
+    const origemLabel = TIPO_LABEL_REF[refTipo] || refTipo;
+    openModal(evento.titulo, `<p style="color:var(--gray-500); font-size:13.5px;">Lembrete vinculado a <strong>${origemLabel}</strong>, criado em ${formatDate(evento.data)}.</p>`, {
+      size: 'sm',
+      footerHtml: `
+        <button type="button" class="btn btn-ghost" data-action="modal.close">Fechar</button>
+        ${pagina ? `<button type="button" class="btn btn-primary" data-action="nav.go" data-page="${pagina}">Ir para ${origemLabel}</button>` : ''}
+      `,
+    });
+    return;
+  }
+
   const pagina = TIPO_PAGE[evento.tipo];
   openModal(evento.titulo, `<p style="color:var(--gray-500); font-size:13.5px;">Vence em ${formatDate(evento.data)}. Esse compromisso é calculado automaticamente a partir do cadastro — para alterá-lo, edite o registro de origem.</p>`, {
     size: 'sm',
@@ -358,6 +376,51 @@ async function excluirEventoCal(target) {
   }
 }
 
+// ============================================================
+// Lembrete genérico — criado a partir de qualquer módulo
+// ============================================================
+function abrirLembreteGenerico(refTipo, refId, refLabel) {
+  const bodyHtml = `
+    <div class="form-grid">
+      <div class="form-field span-2"><label>Título *</label><input id="f-lem-titulo" /></div>
+      <div class="form-field"><label>Tipo</label><select id="f-lem-tipo">${TIPOS_AGENDA.map((t) => `<option>${escapeHtml(t)}</option>`).join('')}</select></div>
+      <div class="form-field"><label>Data *</label><input type="date" id="f-lem-data" value="${todayISO()}" /></div>
+      <div class="form-field"><label>Lembrete</label><div class="checkbox-field" style="height:38px;"><input type="checkbox" id="f-lem-lembrete" checked /> Notificar</div></div>
+      <div class="form-field span-2"><label>Observações</label><textarea id="f-lem-obs"></textarea></div>
+    </div>
+  `;
+  openModal(`Lembrete — ${escapeHtml(refLabel || '')}`, bodyHtml, {
+    size: 'sm',
+    footerHtml: `
+      <button type="button" class="btn btn-ghost" data-action="modal.close">Cancelar</button>
+      <button type="button" class="btn btn-primary" data-action="agenda.salvarLembreteGenerico" data-ref-tipo="${escapeHtml(refTipo)}" data-ref-id="${refId}">Salvar</button>
+    `,
+  });
+}
+
+async function salvarLembreteGenerico(target) {
+  const titulo = byId('f-lem-titulo').value.trim();
+  const data = byId('f-lem-data').value;
+  if (!titulo || !data) { showToast('Informe título e data.', 'error'); return; }
+  const payload = {
+    titulo,
+    tipo: byId('f-lem-tipo').value,
+    data,
+    lembrete: byId('f-lem-lembrete').checked,
+    observacoes: byId('f-lem-obs').value.trim() || null,
+    referencia_tipo: target.dataset.refTipo,
+    referencia_id: Number(target.dataset.refId),
+    criado_por: currentUser()?.id || null,
+  };
+  try {
+    await Service.AgendaEventos.create(payload);
+    showToast('Lembrete criado.', 'success');
+    closeModal();
+  } catch (err) {
+    showToast(err.message || 'Erro ao criar lembrete.', 'error');
+  }
+}
+
 export const actions = {
   ...crudMod.actions,
   'agenda.setView': (target) => setView(target.dataset.view),
@@ -368,4 +431,6 @@ export const actions = {
   'agenda.novoNoDia': (target) => abrirFormularioEventoCal(null, target.dataset.date),
   'agenda.calSalvar': (target) => salvarEventoCal(target),
   'agenda.calExcluir': (target) => excluirEventoCal(target),
+  'agenda.criarLembrete': (target) => abrirLembreteGenerico(target.dataset.refTipo, target.dataset.refId, target.dataset.refLabel),
+  'agenda.salvarLembreteGenerico': (target) => salvarLembreteGenerico(target),
 };

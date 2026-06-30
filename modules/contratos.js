@@ -148,6 +148,7 @@ function renderTable() {
         </div>
         <div class="record-side">
           <p class="record-value">${formatCurrency(valor)}</p>
+          ${canWrite() ? `<button type="button" class="link-btn" style="font-size:12px;margin-top:2px;" data-action="agenda.criarLembrete" data-ref-tipo="contrato" data-ref-id="${c.id}" data-ref-label="Contrato ${escapeHtml(c.numero_contrato)}">+ Lembrete</button>` : ''}
           <div class="record-actions">
             ${c.arquivo_url ? `<button class="icon-btn" data-action="ui.verArquivo" data-url="${escapeHtml(c.arquivo_url)}" title="Ver documento">${ICONS.download}</button>` : ''}
             <button class="icon-btn" data-action="contratos.editar" data-id="${c.id}" title="Editar">${ICONS.edit}</button>

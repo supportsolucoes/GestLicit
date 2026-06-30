@@ -266,6 +266,7 @@ async function renderDetailView(ataId) {
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <button class="btn btn-ghost" data-action="atas.voltarLista">Voltar</button>
         ${canWrite() ? `<button class="btn btn-ghost" data-action="atas.editarHeader" data-id="${currentAta.id}">${ICONS.edit} Editar dados</button>` : ''}
+        ${canWrite() ? `<button class="btn btn-ghost" data-action="agenda.criarLembrete" data-ref-tipo="ata" data-ref-id="${currentAta.id}" data-ref-label="Ata ${escapeHtml(currentAta.numero_ata || '')}">+ Lembrete</button>` : ''}
         ${currentAta.orgao_id ? `<button class="btn btn-ghost" data-action="nav.go" data-page="contratos" data-filter-key="orgao_id" data-filter-value="${currentAta.orgao_id}" data-filter-label="Órgão ${escapeHtml(currentAta.orgao?.nome || '')}">${ICONS.contratos} Ver Contratos do Órgão</button>` : ''}
         <button class="btn btn-ghost" data-action="nav.go" data-page="empenhos" data-filter-key="ata_id" data-filter-value="${currentAta.id}" data-filter-label="Ata ${escapeHtml(currentAta.numero_ata || '')}">${ICONS.empenhos} Ver Empenhos desta Ata</button>
       </div>

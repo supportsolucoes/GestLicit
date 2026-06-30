@@ -147,6 +147,7 @@ function renderTable() {
             <td>${saldo.totalEmpenhado > 0 ? `${saldo.percentual.toFixed(0)}% <span style="color:var(--gray-500); font-size:11.5px;">(${saldo.totalEntregue}/${saldo.totalEmpenhado})</span>` : '-'}</td>
             <td class="row-actions">
               ${e.arquivo_url ? `<button class="icon-btn" data-action="ui.verArquivo" data-url="${escapeHtml(e.arquivo_url)}" title="Ver documento">${ICONS.download}</button>` : ''}
+              ${canWrite() ? `<button class="icon-btn" data-action="agenda.criarLembrete" data-ref-tipo="empenho" data-ref-id="${e.id}" data-ref-label="Empenho ${escapeHtml(e.numero_empenho)}" title="Criar lembrete">${ICONS.bell}</button>` : ''}
               <button class="icon-btn" data-action="empenhos.editar" data-id="${e.id}" title="Editar">${ICONS.edit}</button>
               ${isAdmin() ? `<button class="icon-btn" data-action="empenhos.excluir" data-id="${e.id}" title="Excluir">${ICONS.trash}</button>` : ''}
             </td>
